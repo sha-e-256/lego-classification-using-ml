@@ -14,9 +14,9 @@ def get_contours(img):
     contours_array = cv.findContours(img_array, 1, 2)[0]
     return contours_array
 
-def get_bounding_box(img):
-    contours_array = get_contours(img)
-    contour = contours_array[0]  # Return only one contour
+# Adjust so that if no input given, default i to 0 --> overloading possible, or keep as is
+def get_bounding_box(contours_array, i):
+    contour = contours_array[i]  # Return only one contour
     x_min, y_min, width, height = cv.boundingRect(contour)  # Image only contains one contour
     offset = 2  # Offset to completely enclose the Lego piece in the image
     x_min -= offset
@@ -28,8 +28,8 @@ def get_bounding_box(img):
     c_y = int(m['m01'] / m['m00'])
     return x_min, y_min, x_max, y_max, c_x, c_y
 
-def smart_crop(img):
-    min_x, min_y, max_x, max_y, c_x, c_y = get_bounding_box(img)
+def smart_crop(img, contours_array, i):
+    min_x, min_y, max_x, max_y, c_x, c_y = get_bounding_box(contours_array, i)
     cropped_img = img[min_y:max_y, min_x:max_x]  # Return image within bounding box coordinates
     right = 75 - (max_x - c_x)
     top = 75 - (c_y - min_y)
