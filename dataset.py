@@ -31,7 +31,7 @@ class Dataset:
             print(error)
         return enum_element_id
 
-    def traverse_dir_training_images(self, dst_dir, op):
+    def generate_dataset(self, dst_dir, op):
         flag = True
         for label, element_id in self.enum_class_names:
             dir_element_id = rf'{self.dir_training_images}\{element_id}'
@@ -43,13 +43,13 @@ class Dataset:
                 # Given a directory of images, crop image to have an aspect ratio of 1:1
                 # and remove as much bg as possible
                 if op == 0:
-
                    if flag:  # If sub-folder has already been generated, do not re-generate
                         try:
                             os.mkdir(rf'{dst_dir}\{element_id}')
                         except OSError as error:
                             pass
-                        square_img = sc.smart_crop(img)
+                        contours_array = sc.get_contours(img)
+                        square_img = sc.smart_crop(img, contours_array, 0)  # 0 for only one object in image
                         dst_dir_img = rf'{dst_dir}\{element_id}\{img_name}'
                         cv.imwrite(dst_dir_img, square_img)
 
@@ -77,7 +77,7 @@ def main():
     images_dir = r'D:\lego-classification-using-ml\training-images'  # src_dir
     squares_dir = r'D:\lego-classification-using-ml\square-training-images'  # dst_dir
     training_dataset = Dataset(images_dir)
-    training_dataset.traverse_dir_training_images(squares_dir, 1)
+    training_dataset.generate_dataset(squares_dir, 0)
     training_dataset.display_training_dataset()
 
 if __name__ == '__main__':
