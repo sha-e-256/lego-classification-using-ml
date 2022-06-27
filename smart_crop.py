@@ -1,4 +1,5 @@
 import cv2 as cv
+
 __author__ = "Shahed E."
 
 # This module provides functions that can be used to pre-process training and testing images
@@ -42,19 +43,26 @@ def find_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
     return max_border
 
 # Create a square, cropped image based off of the bounding box enclosing the contour
-def smart_crop(max_border, img):
-    if max_border < 75: # Any smaller and the image will not crop properly
-        max_border = 75
+def smart_crop(img, max_border, dst_dir):
     contours_array = get_contours(img)
     for i in range(len(contours_array)):
+        img_copy = img.copy() # Do not overwrite original image; crop the copies of the original image
         min_x, min_y, max_x, max_y, c_x, c_y = get_bounding_box(contours_array[i])
-        cropped_img = img[min_y:max_y, min_x:max_x]  # Return image within bounding box coordinates
+        cropped_img = img_copy[min_y:max_y, min_x:max_x]  # Return image within bounding box coordinates
         right = max_border - (max_x - c_x)
         top = max_border - (c_y - min_y)
         left = max_border - (c_x - min_x)
         bottom = max_border - (max_y - c_y)
         white = [255, 255, 255]
         square_img = cv.copyMakeBorder(cropped_img, top, bottom, left, right, cv.BORDER_CONSTANT, None, white)  # Add a white border
+        if (len(contours_array) == 1):
+            dst_dir_img = rf'{dst_dir}'
+        else:
+            down_width = 150
+            down_height = 150
+            down_points = (down_width, down_height)
+            dst_dir_img = rf'{dst_dir}\{i}.png'
+            cv.resize(square_img, down_points, cv.INTER_LINEAR)
+        cv.imwrite(dst_dir_img, square_img)
 
-    return square_img
 
