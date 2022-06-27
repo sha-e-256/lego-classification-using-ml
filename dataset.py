@@ -1,6 +1,4 @@
 import cv2 as cv
-from IPython.display import display, Image
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
@@ -55,9 +53,10 @@ class Dataset:
                         os.mkdir(rf'{dst_dir}\{element_id}')
                     except OSError as error:
                         pass
-                    square_img = sc.smart_crop(75, img)  # 0 for only one object in image
-                    dst_dir_img = rf'{dst_dir}\{element_id}\{img_name}'
-                    cv.imwrite(dst_dir_img, square_img)
+                    dst_dir_square_img = rf'{dst_dir}\{element_id}\{img_name}'
+                    print(dst_dir_square_img)
+                    sc.smart_crop(img, 75, dst_dir_square_img)  # 0 for only one object in image
+
                     self.training_dataset.append([img, label])  # More efficient to have list of NumPy arrays than a 2D NumPy array
 
         random.shuffle(self.training_dataset) # Shuffling allows the model to be trained more effectively
