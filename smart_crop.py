@@ -47,6 +47,7 @@ def find_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
 def smart_crop(img, max_border, dst_dir):
     max_border = int(max_border)
     contours_array = get_contours(img)
+    counter = 0
     for i in range(len(contours_array)):
         img_copy = img.copy() # Do not overwrite original image; crop the copies of the original image
         contour = contours_array[i]
@@ -58,15 +59,14 @@ def smart_crop(img, max_border, dst_dir):
         c_x = int(c_x)
         c_y = int(c_y)
         (width, height) = b_rect[1]
-        if(width > 50 and height > 50):
+        if(width > 20 and height > 20):
 
             rotated_b_rect = (b_rect[0], b_rect[1], 0)  # Bounding box of piece after rotating image
             rotated_b_box = np.int0(cv.boxPoints(rotated_b_rect))  # The coordinates of the four corners of the bounding box
-            # print(b_box)
-            rotated_min_x = int(rotated_b_box[0, 0] - 2)
-            rotated_max_x = int(rotated_b_box[2, 0] + 4)
-            rotated_min_y = int(rotated_b_box[1, 1] - 2)
-            rotated_max_y = int(rotated_b_box[3, 1] + 4)
+            rotated_min_x = int(rotated_b_box[0, 0] )
+            rotated_max_x = int(rotated_b_box[2, 0] )
+            rotated_min_y = int(rotated_b_box[1, 1] )
+            rotated_max_y = int(rotated_b_box[3, 1] )
 
             cropped_img = rotated_img[rotated_min_y:rotated_max_y, rotated_min_x:rotated_max_x]  # Return image within bounding box coordinates
 
@@ -76,14 +76,21 @@ def smart_crop(img, max_border, dst_dir):
             bottom = max_border - (rotated_max_y - c_y)
             white = [255, 255, 255]
             square_img = cv.copyMakeBorder(cropped_img, top, bottom, left, right, cv.BORDER_CONSTANT, None, white)  # Add a white border
+
+            cv.imshow("img", square_img)
+            cv.waitKey()
+            cv.destroyAllWindows()
+
             if (len(contours_array) == 1):
                 dst_dir_img = rf'{dst_dir}'
             else:
-                down_width = 256
-                down_height = 256
-                down_points = (down_width, down_height)
-                dst_dir_img = rf'{dst_dir}\{i}.png'
-                cv.resize(square_img, down_points, cv.INTER_LINEAR)
-            cv.imwrite(dst_dir_img, square_img)
+                dst_dir_img = rf'{dst_dir}\{counter}.png'
+
+            counter += 1
+            down_width = 256
+            down_height = 256
+            down_points = (down_width, down_height)
+            square_img_resized = cv.resize(square_img, down_points, cv.INTER_LINEAR)
+            cv.imwrite(dst_dir_img, square_img_resized)
 
 
