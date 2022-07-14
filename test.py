@@ -34,8 +34,8 @@ def main():
 
         # If the contour is very small, then just disregard it; its probably not enclosing an object then
         img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert to greyscale
-        threshold = cv.threshold(img_g, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[0]
-
+        img_g_blur = cv.GaussianBlur(img_g, (5, 5), 0)
+        threshold = cv.threshold(img_g_blur, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[0]
         mask = cv.inRange(img_g, threshold, 255)  # Create a mask of all pixels where the
                                                   # pixel value is from threshold to 255 (white)
         img_copy = img.copy()
@@ -47,20 +47,20 @@ def main():
             # If angle changes, center coordinates and width/height do not change
             b_rect = cv.minAreaRect(contour)  # The center coordinates, width, height, and angle of rotation of b box
             rotation_matrix = cv.getRotationMatrix2D(center=b_rect[0], angle=b_rect[2], scale=1)
-            rotated_img = cv.warpAffine(src=img_copy, M=rotation_matrix, dsize=(4056, 3040))
+            rotated_img = cv.warpAffine(src=img_copy, M=rotation_matrix, dsize=(1014, 760))
 
             b_box = np.int0(cv.boxPoints(b_rect))  # Un-rotated corner coordinates
-            min_x = b_box[0, 0] - 2
-            max_x = b_box[2, 0] + 4
-            min_y = b_box[1, 1] - 2
-            max_y = b_box[3, 1] + 4
+            min_x = b_box[0, 0]
+            max_x = b_box[2, 0]
+            min_y = b_box[1, 1]
+            max_y = b_box[3, 1]
 
             # Tuples are immutable
             (c_x, c_y) = b_rect[0] # Used for rotated and un-rotated images
 
             (width, height) = b_rect[1]
 
-            if(width > 50 and height > 50):  # Ignore small bounding boxes; its not enclosing a shape
+            if(width > 20 and height > 20):  # Ignore small bounding boxes; its not enclosing a shape
                 print('hi')
                 rotated_b_rect = (b_rect[0], b_rect[1], 0)  # Bounding box of piece after rotating image
                 rotated_b_box = np.int0(cv.boxPoints(rotated_b_rect))  # The coordinates of the four corners of the bounding box
@@ -80,22 +80,22 @@ def main():
                 data[i]['c_y'] = int(c_y)
 
                 max_border = sc.find_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y)
-                cropped_img = rotated_img[rotated_min_y:rotated_max_y, rotated_min_x:rotated_max_x]
-                cv.drawContours(img, [b_box], 0, (0, 255, 0), 2)
-                cv.imshow("img with no bg", cropped_img)
-                cv.waitKey()
-                cv.destroyAllWindows()
+                #cropped_img = rotated_img[rotated_min_y:rotated_max_y, rotated_min_x:rotated_max_x]
+                # cv.drawContours(img, [b_box], 0, (0, 255, 0), 2)
+                # cv.imshow("img with no bg", cropped_img)
+                # cv.waitKey()
+                # cv.destroyAllWindows()
                 # draw_bounding_box(img, min_x, min_y, max_x, max_y)
 
         # cv.imshow("img with no bg", img_copy)
         # cv.waitKey()
         # cv.destroyAllWindows()
-        #write_to_JSON_file(data)
+        write_to_JSON_file(data)
         sc.smart_crop(img_copy, max_border, dst_dir)
 
     dst_dir = r'E:\lego-classification-using-ml\segmented-testing-images'
     # On laptop E drive; on PC D drive
-    src_dir = r'E:\lego-classification-using-ml\testing-images\02.png'
+    src_dir = r'E:\lego-classification-using-ml\testing-images\02-half-size.png'
     img = cv.imread(src_dir)
 
     create_JSON_annotation_file(img, dst_dir)
