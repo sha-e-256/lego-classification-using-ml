@@ -1,108 +1,72 @@
-import cv2 as cv
+import cv2 as cv  # openCV
+import smart_crop as sc  # Self-made library used to crop images
 import numpy as np
-import os
-import smart_crop as sc
 import random
+import os
 from tqdm import tqdm
-
-__author__ = "Shahed E."
-
-class Dataset:
-    # Class variables (belong to the class)
-
-    def __init__(self, dir_training_images):
-        # Instance variables (belong to each object)
-        self.dir_training_images = dir_training_images
-        self.enum_class_names = self.get_class_names(self.dir_training_images)
-        self.training_dataset = []
-        self.features = []
-        self.labels = []
-
-    def get_class_names(self, dir_training_images):
-        try:
-            list_element_id = os.listdir(self.dir_training_images)
-            enum_element_id = enumerate(list_element_id)
-        except FileNotFoundError as error:
-            print(error)
-        return enum_element_id
-
-    # def get_max_border(self):
-    #     max_border = 0
-    #     for label, element_id in self.enum_class_names:
-    #         dir_element_id = rf'{self.dir_training_images}\{element_id}'
-    #         list_img = os.listdir(dir_element_id)
-    #         for img_name in tqdm(list_img):
-    #             dir_img = rf'{dir_element_id}\{img_name}'
-    #             img = cv.imread(dir_img)
-    #             max_border = sc.find_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y)
-    #     return max_border
-
-    def generate_dataset(self, dst_dir):
-        max_border = 0
-        flag = True
-        for label, element_id in self.enum_class_names:
-            dir_element_id = rf'{self.dir_training_images}\{element_id}'
-            list_img = os.listdir(dir_element_id)
-            for img_name in tqdm(list_img):
-                dir_img = rf'{dir_element_id}\{img_name}'
-                img = cv.imread(dir_img)
-
-                contours_array = sc.get_contours(img)  # Only need first contour
-                # Given a directory of images, crop image to have an aspect ratio of 1:1
-                # and remove as much bg as possible
-                if flag:  # If sub-folder has already been generated, do not re-generate
-                    try:
-                        os.mkdir(rf'{dst_dir}\{element_id}')
-                    except OSError as error:
-                        pass
-                    dst_dir_square_img = rf'{dst_dir}\{element_id}\{img_name}'
-
-                    # cv.imshow("img", img)
-                    # cv.waitKey()
-                    # cv.destroyAllWindows()
-
-                    #print(dst_dir_square_img)
-
-                    for contour in contours_array:
-                        min_x, min_y, max_x, max_y, c_x, c_y = sc.get_bounding_box(contour)
-
-                        if (((max_x - min_x) > 20) and ((max_y - min_y) > 20)):
-                            img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert to greyscale
-
-                            threshold = cv.threshold(img_g, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[0]
-                            mask = cv.inRange(img_g, threshold, 255)  # Create a mask of all pixels where the
-                            img_copy = img.copy()
-                            img_copy[mask > threshold] = (255, 255, 255)
-                            white = [255, 255, 255]
-                            img_copy = cv.copyMakeBorder(img_copy, 100, 100, 100, 100, cv.BORDER_CONSTANT, None,
-                                                    white)  # Add a white border
-                            max_border = sc.find_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y)
-                            sc.smart_crop(img_copy, 214, dst_dir_square_img)  # 0 for only one object in image
-
-                        self.training_dataset.append([img, label])  # More efficient to have list of NumPy arrays than a 2D NumPy array
-        print(max_border)
-
-        random.shuffle(self.training_dataset) # Shuffling allows the model to be trained more effectively
-        self.features = self.training_dataset[0]
-        self.labels = self.training_dataset[1]
-        np.save('features.npy', self.features)
-        np.save('labels.npy', self.labels)
+import argparse
 
 
-    def display_training_dataset(self):
-        pass
-        # !!To do: Display features & labels arrays in a dataframe
-        # dataframe = pd.DataFrame(self.labels)
-        # pd.options.display.max_columns = 20
-        # display(dataframe)
+# The objective of this program is to pre-process images that will be used to generate a
+# training dataset. To begin, the background of each image is removed, then the piece is centered
+# in the image, and then the image is cropped to have a square (1:1) aspect ratio.
+
 
 def main():
+    # Allow user to supply the paths of directories using the command line
+    # For ex., enter the following into the terminal:
+    # python dataset.py 'D:\lego-classification-using-ml\training-images' 'D:\lego-classification-using-ml\square-training-images'
+    # Use 'CTRL-C' to exit a script running in terminal
+    def get_src_dst_dir():
+        parser = argparse.ArgumentParser(
+            description='Pre-processes images that will be used to generate a training dataset')
 
-    images_dir = r'E:\lego-classification-using-ml\real-training-images'  # src_dir
-    squares_dir = r'E:\lego-classification-using-ml\square-real-training-images'  # dst_dir
-    training_dataset = Dataset(images_dir)
-    training_dataset.generate_dataset(squares_dir)
-    #training_dataset.display_training_dataset()
+        parser.add_argument(
+            'src_dir', metavar='src_dir', type=str,
+            help='Enter top-most source directory containing images which will be pre-processed')
+        parser.add_argument(
+            'dst_dir', metavar='dst_dir', type=str,
+            help='Enter top-most destination directory where pre-processed images will be saved')
+
+        args = parser.parse_args()
+        src_dir = args.src_dir
+        dst_dir = args.dst_dir
+
+        return src_dir, dst_dir
+
+    def get_class_names(src_dir):
+        try:
+            class_names = os.listdir(src_dir)  # Names of subdirectories in the source directory
+        except FileNotFoundError as error:
+            print(error)
+        return class_names
+
+    def process_images():
+        subdirectory_exists_flag = False
+        src_dir, dst_dir = get_src_dst_dir() # Paths of source and destination directories, respectively
+        class_names = get_class_names(src_dir)
+        # print(f'\nsrc_dir: {src_dir} \ndst_dir: {dst_dir}')  # Debug statement
+        # print(f'\nclass names:{class_names}')  # Debug statement
+        for class_name in class_names:
+            class_name_dir = rf'{src_dir}\{class_name}'  # Path of each subdirectory
+            # r' ignores escape characters in string
+            # For ex., \t is an escape character which creates an indent
+            img_names = os.listdir(class_name_dir)  # Names of images in subdirectory
+            for img_name in tqdm(img_names):
+                img_src_dir = rf'{class_name_dir}\{img_name}'  # Path of image
+
+                img = cv.imread(img_src_dir)  # np array of image
+                if not subdirectory_exists_flag:  # If the subdirectory in the destination directory does not exist...
+                    try:
+                        os.mkdir(rf'{dst_dir}\{class_name}')  # ...Create the subdirectory
+                        subdirectory_exists_flag = True
+                    except OSError as error:
+                        pass    # Do not generate a subdirectory if it already exists
+                img_dst_dir = rf'{dst_dir}\{class_name}\{img_name}'
+                sc.rotate_and_square_crop(img, img_dst_dir)
+
+
+    process_images()
 
 if __name__ == '__main__':
     main()
