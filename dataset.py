@@ -75,7 +75,7 @@ def main():
                     except OSError as error:
                         pass    # Do not generate a subdirectory if it already
                         # exists
-                    img_dst_dir = rf'{dst_dir}\{class_name}\{img_name}'
+                    img_dst_dir = rf'{dst_dir}\{class_name}\{img_name.split(".")[0]}'
                     sc.rotate_and_square_crop(img, img_dst_dir)
 
     process_images()
