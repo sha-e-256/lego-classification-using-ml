@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 
 WHITE = [255, 255, 255]
+BLACK = [0, 0, 0]
 
 # This module provides functions that can be used to pre-process
 # training and testing images
@@ -61,8 +62,8 @@ def rotate_img(img, b_box_rect):
     rotated_img = cv.warpAffine(src=img, M=rotation_matrix,
                                 dsize=(img_width, img_height),
                                 borderMode=cv.BORDER_CONSTANT, borderValue=WHITE)
-    # cv.drawContours(rotated_img, [b_box], 0, black, 1)
-    # circle_img = cv.circle(rotated_img, (b_box_c_x, b_box_c_y), 0, black, 2)
+    # cv.drawContours(rotated_img, [b_box], 0, BLACK, 1)
+    # circle_img = cv.circle(rotated_img, (b_box_c_x, b_box_c_y), 0, BLACK, 2)
     # cv.imshow("cropped img", circle_img)
     # cv.waitKey()
     # cv.destroyAllWindows()
@@ -72,7 +73,9 @@ def rotate_img(img, b_box_rect):
 
 
 def rotate_and_square_crop(img, dst_dir):
-    max_border = 405  # Hardcoded for now; Minimum = 399
+    # max_border = 399 + 10 # For real images
+    max_border = 420 + 10  # For 3D CAD images
+    #max_border = 0
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
     img_g_blur = cv.GaussianBlur(src=img_g, ksize=(3, 3), sigmaX=0)
 
@@ -90,6 +93,7 @@ def rotate_and_square_crop(img, dst_dir):
         b_box_height = int(b_box_rect[1][1])  # Cols (height)
         # If the bounding box is very small, it's not enclosing a piece
         if b_box_width > 200 or b_box_height > 200:
+            # keep at 250 for real pics, 200 for 3d
             b_box_c_x = int(b_box_rect[0][0])  # Coordinates of the center of
             b_box_c_y = int(b_box_rect[0][1])  # the bounding box
             cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
@@ -107,9 +111,9 @@ def rotate_and_square_crop(img, dst_dir):
             rotated_max_x = int(rotated_b_box[2, 0])
             rotated_min_y = int(rotated_b_box[1, 1])
             rotated_max_y = int(rotated_b_box[3, 1])
-            #max_border = get_max_border(max_border, rotated_min_x,
-                                        # rotated_min_y, rotated_max_x,
-                                        # rotated_max_y, b_box_c_x, b_box_c_y)
+            # max_border = get_max_border(max_border, rotated_min_x,
+            #                             rotated_min_y, rotated_max_x,
+            #                             rotated_max_y, b_box_c_x, b_box_c_y)
             # Center object in image by expanding border so all images
             # are scaled relative to each other
             # Determine lengths needed to expand image border
@@ -117,7 +121,7 @@ def rotate_and_square_crop(img, dst_dir):
             top_border_width = max_border - (rotated_b_box_c_y - rotated_min_y)
             left_border_width = max_border - (rotated_b_box_c_x - rotated_min_x)
             bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
-
+            #print(f'{right_border_width}, {top_border_width}, {left_border_width}, {bottom_border_width}')
             # Expand image border using lengths
             square_and_cropped_img = cv.copyMakeBorder(src=cropped_img,
                                                        top=top_border_width,
@@ -134,3 +138,4 @@ def rotate_and_square_crop(img, dst_dir):
             img_dst_dir = rf'{dst_dir + "-" + str(num_pieces_index)}.png'
             cv.imwrite(img_dst_dir, img_downsized)
             num_pieces_index += 1
+            # print(max_border)
