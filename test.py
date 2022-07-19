@@ -11,7 +11,8 @@ import random
 # The coordinates of the bounding box and the centroid of each Lego piece
 # will be saved in a JSON file
 
-
+BLACK = [0, 0, 0]
+WHITE = [255, 255, 255]
 
 def main():
 
@@ -54,15 +55,24 @@ def main():
 
         for j in range(len(results)):
             segmented_img_b_box = results[j]['bounding_box']
+            segmented_img_b_box_c_x = results[j]['c_x']
+            segmented_img_b_box_c_y = results[j]['c_y']
             colour = (random.randint(0, 256), random.randint(0, 256), random.randint(0, 256))
-
+            # Draw contour of bounding box on unsegmented image in a random colour
             cv.drawContours(unsegmented_img_copy, [segmented_img_b_box], 0, colour, 10)
+            img_with_text = cv.putText(img=unsegmented_img_copy, text=prediction,
+                                       org=(segmented_img_b_box_c_x, segmented_img_b_box_c_y),
+                                       fontFace=cv.FONT_HERSHEY_SIMPLEX,
+                                       fontScale=1, color=WHITE, thickness=3,
+                                       lineType=cv.LINE_AA)
             img_height = int(unsegmented_img_copy.shape[0])
             img_width = int(unsegmented_img_copy.shape[1])
-            down_points = (img_width//4, img_height//4)
+            down_points = (img_width//4, img_height//4)  # Resize image so it fits on monitor
             unsegmented_img_downsized = cv.resize(src=unsegmented_img_copy,
                                       dsize=down_points,
                                       interpolation=cv.INTER_LINEAR)
+
+        # Display image with bounding box information
         cv.imshow("unsegmented img with bounding boxes", unsegmented_img_downsized)
         cv.waitKey()
         cv.destroyAllWindows()
