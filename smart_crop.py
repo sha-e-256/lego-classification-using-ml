@@ -4,11 +4,11 @@ import numpy as np
 WHITE = [255, 255, 255]
 BLACK = [0, 0, 0]
 
+
 # This module provides functions that can be used to pre-process
 # training and testing images
 
 def get_contours_array(img):
-
     threshold, img_mask = cv.threshold(src=img, thresh=0, maxval=255,
                                        type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
     # cv.imshow('img', img_mask)  # Debug statment
@@ -21,6 +21,7 @@ def get_contours_array(img):
 
     return contours_array, threshold  # Image can contain one or more contours
 
+
 def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
     if (c_y - min_y) > max_border: max_border = c_y - min_y
     if (max_y - c_y) > max_border: max_border = max_y - c_y
@@ -28,54 +29,53 @@ def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
     if (max_x - c_x) > max_border: max_border = max_x - c_x
     return max_border
 
+
 # Rotate the image with respect to the center of the bounding box
 # and increase the width and height of the image so that
 # the corners of the image do not get cut off after rotation
 def rotate_img(img, b_box_rect):
     img_height = int(img.shape[0])
     img_width = int(img.shape[1])
-    img_c_x = int(img_width / 2)
-    img_c_y = int(img_height / 2)
+    (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
+    (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
+    b_box_angle = get_bounding_box_info(b_box_rect)[2]
 
-    b_box_c_x = int(b_box_rect[0][0])  # Coordinates of the center of
-    b_box_c_y = int(b_box_rect[0][1])  # the bounding box
-    b_box_width = int(b_box_rect[1][0])  # Width and height of the
-    b_box_height = int(b_box_rect[1][1])  # bounding box
-    b_box_angle = b_box_rect[2]  # The angle of the bounding box
-
-    rotated_b_box_rect = ((b_box_c_x, b_box_c_y),
-                          (b_box_width, b_box_height), 0)
-    b_box = np.int0(cv.boxPoints(rotated_b_box_rect))  # The coordinates
-
-    # Rotate about center of rect
+    # Rotate image about center of bounding box rectangle
     rotation_matrix = cv.getRotationMatrix2D(center=(b_box_c_x, b_box_c_y),
                                              angle=b_box_angle, scale=1)
-    # cos_rotation_matrix = abs(rotation_matrix[0][0])
-    # sin_rotation_matrix = abs(rotation_matrix[0][1])
 
-    # rotated_img_width = int(img_height * sin_rotation_matrix +
-    #                         img_width * cos_rotation_matrix)
-    # rotated_img_height = int(img_height * cos_rotation_matrix +
-    #                          img_width * sin_rotation_matrix)
-    # rotation_matrix[0][2] += int(rotated_img_width/2) - img_c_x
-    # rotation_matrix[1][2] += int(rotated_img_height/2) - img_c_y
     rotated_img = cv.warpAffine(src=img, M=rotation_matrix,
                                 dsize=(img_width, img_height),
                                 borderMode=cv.BORDER_CONSTANT, borderValue=WHITE)
-    # cv.drawContours(rotated_img, [b_box], 0, BLACK, 1)
-    # circle_img = cv.circle(rotated_img, (b_box_c_x, b_box_c_y), 0, BLACK, 2)
-    # cv.imshow("cropped img", circle_img)
-    # cv.waitKey()
-    # cv.destroyAllWindows()
+
     cropped_img = cv.getRectSubPix(image=rotated_img, patchSize=(b_box_width, b_box_height),
                                    center=(b_box_c_x, b_box_c_y))
     return cropped_img
 
 
+# Return information on the bounding box
+def get_bounding_box_info(b_box_rect):
+    b_box_width = int(b_box_rect[1][0])  # Rows (width)
+    b_box_height = int(b_box_rect[1][1])  # Cols (height)
+    b_box_c_x = int(b_box_rect[0][0])  # Coordinates of the center of
+    b_box_c_y = int(b_box_rect[0][1])  # the bounding box
+    b_box_angle = b_box_rect[2]
+    b_box = np.int0(cv.boxPoints(b_box_rect))
+    min_x = int(b_box[0, 0])  # The coordinates of the four corners
+    max_x = int(b_box[2, 0])
+    min_y = int(b_box[1, 1])
+    max_y = int(b_box[3, 1])
+    return (b_box_width, b_box_height), \
+           (b_box_c_x, b_box_c_y), \
+            b_box_angle, \
+           (min_x, min_y, max_x, max_y)
+
+
+# Segment an image into 1 more sub-image, where each
+# image contains a Lego piece
 def rotate_and_square_crop(img, dst_dir):
     # max_border = 399 + 10 # For real images
     max_border = 420 + 10  # For 3D CAD images
-    #max_border = 0
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
     img_g_blur = cv.GaussianBlur(src=img_g, ksize=(3, 3), sigmaX=0)
 
@@ -89,31 +89,23 @@ def rotate_and_square_crop(img, dst_dir):
 
     for contour in contours_array:
         b_box_rect = cv.minAreaRect(contour)
-        b_box_width = int(b_box_rect[1][0])  # Rows (width)
-        b_box_height = int(b_box_rect[1][1])  # Cols (height)
+        (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
+
         # If the bounding box is very small, it's not enclosing a piece
         if b_box_width > 200 or b_box_height > 200:
             # keep at 250 for real pics, 200 for 3d
-            b_box_c_x = int(b_box_rect[0][0])  # Coordinates of the center of
-            b_box_c_y = int(b_box_rect[0][1])  # the bounding box
+
             cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
             # respect to the angle of each bounding box in the image
+            (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
+            b_box_angle = 0
+            rotated_b_box_rect = ((b_box_c_x, b_box_c_y),  # Align bounding box
+                                  (b_box_width, b_box_height), b_box_angle)  # parallel to image borders
 
-            rotated_b_box_rect = ((b_box_c_x, b_box_c_y),
-                                  (b_box_width, b_box_height), 0)
-            rotated_b_box_c_x = int(rotated_b_box_rect[0][0])  # Coordinates of the center of
-            rotated_b_box_c_y = int(rotated_b_box_rect[0][1])  # the bounding box
+            (rotated_b_box_c_x, rotated_b_box_c_y) = get_bounding_box_info(rotated_b_box_rect)[1]
+            (rotated_min_x, rotated_min_y,
+             rotated_max_x, rotated_max_y) = get_bounding_box_info(rotated_b_box_rect)[3]
 
-            rotated_b_box = np.int0(cv.boxPoints(rotated_b_box_rect))  # The coordinates
-            # of the four corners of the bounding box rect
-
-            rotated_min_x = int(rotated_b_box[0, 0])
-            rotated_max_x = int(rotated_b_box[2, 0])
-            rotated_min_y = int(rotated_b_box[1, 1])
-            rotated_max_y = int(rotated_b_box[3, 1])
-            # max_border = get_max_border(max_border, rotated_min_x,
-            #                             rotated_min_y, rotated_max_x,
-            #                             rotated_max_y, b_box_c_x, b_box_c_y)
             # Center object in image by expanding border so all images
             # are scaled relative to each other
             # Determine lengths needed to expand image border
@@ -121,7 +113,7 @@ def rotate_and_square_crop(img, dst_dir):
             top_border_width = max_border - (rotated_b_box_c_y - rotated_min_y)
             left_border_width = max_border - (rotated_b_box_c_x - rotated_min_x)
             bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
-            #print(f'{right_border_width}, {top_border_width}, {left_border_width}, {bottom_border_width}')
+
             # Expand image border using lengths
             square_and_cropped_img = cv.copyMakeBorder(src=cropped_img,
                                                        top=top_border_width,
@@ -138,4 +130,3 @@ def rotate_and_square_crop(img, dst_dir):
             img_dst_dir = rf'{dst_dir + "-" + str(num_pieces_index)}.png'
             cv.imwrite(img_dst_dir, img_downsized)
             num_pieces_index += 1
-            # print(max_border)
