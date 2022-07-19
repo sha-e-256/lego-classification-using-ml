@@ -7,7 +7,6 @@ BLACK = [0, 0, 0]
 
 # This module provides functions that can be used to pre-process
 # training and testing images
-
 def get_contours_array(img):
     threshold, img_mask = cv.threshold(src=img, thresh=0, maxval=255,
                                        type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
@@ -21,7 +20,8 @@ def get_contours_array(img):
 
     return contours_array, threshold  # Image can contain one or more contours
 
-
+# Return the length that extends the images border so that the image
+# has a square aspect ratio but the image remains centered in the image
 def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
     if (c_y - min_y) > max_border: max_border = c_y - min_y
     if (max_y - c_y) > max_border: max_border = max_y - c_y
@@ -67,7 +67,7 @@ def get_bounding_box_info(b_box_rect):
     max_y = int(b_box[3, 1])
     return (b_box_width, b_box_height), \
            (b_box_c_x, b_box_c_y), \
-            b_box_angle, \
+           b_box_angle, \
            (min_x, min_y, max_x, max_y)
 
 
