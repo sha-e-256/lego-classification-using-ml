@@ -5,7 +5,7 @@
 -- Define properties of the animation
 function register()
 
-    n = 6 -- Dimensions of training dataset
+    n = 4 -- Dimensions of training dataset
     local ani = ldc.animation('training_dataset_collection')
 
     -- LDCad has a cap of 100 FPS
