@@ -3,7 +3,7 @@ import numpy as np
 
 WHITE = [255, 255, 255]
 BLACK = [0, 0, 0]
-
+true_contours = []
 
 # This module provides functions that can be used to pre-process
 # training and testing images
@@ -74,8 +74,9 @@ def get_bounding_box_info(b_box_rect):
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
 def rotate_and_square_crop(img, dst_dir):
-    # max_border = 399 + 10 # For real images
-    max_border = 420 + 10  # For 3D CAD images
+    max_border = 399 + 10 # For real images
+    # max_border = 420 + 10  # For 3D CAD images
+
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
     img_g_blur = cv.GaussianBlur(src=img_g, ksize=(3, 3), sigmaX=0)
 
@@ -94,6 +95,7 @@ def rotate_and_square_crop(img, dst_dir):
         # If the bounding box is very small, it's not enclosing a piece
         if b_box_width > 200 or b_box_height > 200:
             # keep at 250 for real pics, 200 for 3d
+            true_contours.append(contour)
 
             cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
             # respect to the angle of each bounding box in the image
@@ -127,6 +129,10 @@ def rotate_and_square_crop(img, dst_dir):
             img_downsized = cv.resize(src=square_and_cropped_img,
                                       dsize=down_points,
                                       interpolation=cv.INTER_LINEAR)
-            img_dst_dir = rf'{dst_dir + "-" + str(num_pieces_index)}.png'
+            img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}.png'
             cv.imwrite(img_dst_dir, img_downsized)
             num_pieces_index += 1
+
+
+def get_true_contours():
+    return true_contours
