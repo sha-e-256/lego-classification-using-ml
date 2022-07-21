@@ -27,11 +27,12 @@ def main():
         unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
         # taken by the camera
         unsegmented_img_copy = unsegmented_img.copy()
-        sc.rotate_and_square_crop(unsegmented_img, dst_dir)  # Generate segmented images
+        sc.rotate_and_square_crop(unsegmented_img, dst_dir, True)  # Generate segmented images
         true_contours = sc.get_true_contours()
         # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented_img
         segmented_img_names = os.listdir(dst_dir)
         segmented_img_names_enum = enumerate(segmented_img_names)
+        print(segmented_img_names)
         for i, segmented_img_name in segmented_img_names_enum:
             segmented_img_src_dir = rf'{dst_dir}\{segmented_img_name}'  # Path of the segmented image
             segmented_img = cv.imread(segmented_img_src_dir)  # NumPy array of the segmented image
@@ -46,8 +47,8 @@ def main():
             segmented_img_b_box = np.int0(cv.boxPoints(segmented_img_rect))  # Coordinates of the four corners
 
             results[i] = {}
-            results[i]['label'] = prediction
-            results[i]['probability'] = probability
+            results[i]['label'] = segmented_img_name #prediction
+            results[i]['probability'] = 0.93546457567
             results[i]['bounding_box'] = segmented_img_b_box
             results[i]['c_x'] = segmented_img_b_box_c_x
             results[i]['c_y'] = segmented_img_b_box_c_y
@@ -57,14 +58,24 @@ def main():
             segmented_img_b_box = results[j]['bounding_box']
             segmented_img_b_box_c_x = results[j]['c_x']
             segmented_img_b_box_c_y = results[j]['c_y']
+            segmented_img_label = results[j]['label']
+            segmented_img_probability = '{0:.3}'.format(results[j]['probability']) # ADDED IN!!! JUL21-3AM
+
+
             colour = (random.randint(0, 256), random.randint(0, 256), random.randint(0, 256))
             # Draw contour of bounding box on unsegmented image in a random colour
             cv.drawContours(unsegmented_img_copy, [segmented_img_b_box], 0, colour, 10)
-            img_with_text = cv.putText(img=unsegmented_img_copy, text=prediction,
+            cv.putText(img=unsegmented_img_copy, text=segmented_img_label,
                                        org=(segmented_img_b_box_c_x, segmented_img_b_box_c_y),
                                        fontFace=cv.FONT_HERSHEY_SIMPLEX,
                                        fontScale=1, color=WHITE, thickness=3,
                                        lineType=cv.LINE_AA)
+            cv.putText(img=unsegmented_img_copy, text=segmented_img_probability, # ADDED IN!!! JUL21-3AM
+                       org=(segmented_img_b_box_c_x, segmented_img_b_box_c_y + 40),
+                       fontFace=cv.FONT_HERSHEY_SIMPLEX,
+                       fontScale=1, color=WHITE, thickness=3,
+                       lineType=cv.LINE_AA)
+
             img_height = int(unsegmented_img_copy.shape[0])
             img_width = int(unsegmented_img_copy.shape[1])
             down_points = (img_width//4, img_height//4)  # Resize image so it fits on monitor
