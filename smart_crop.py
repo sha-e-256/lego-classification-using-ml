@@ -130,12 +130,8 @@ def rotate_and_square_crop(img, dst_dir, isTest):
                                       dsize=down_points,
                                       interpolation=cv.INTER_LINEAR)
             if isTest:
-                img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}'
+                img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}.png'
             else:
                 img_dst_dir = rf'{dst_dir}.png'
             cv.imwrite(img_dst_dir, img_downsized)
             num_pieces_index += 1
-
-
-def get_true_contours():
-    return true_contours
