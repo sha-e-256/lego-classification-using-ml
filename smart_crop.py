@@ -73,17 +73,16 @@ def get_bounding_box_info(b_box_rect):
 
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
-def rotate_and_square_crop(img, dst_dir):
-    max_border = 399 + 10 # For real images
-    # max_border = 420 + 10  # For 3D CAD images
+def rotate_and_square_crop(img, dst_dir, isTest):
+    #max_border = 399 + 10 # For real images
+    max_border = 420 + 10  # For 3D CAD images
 
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
     img_g_blur = cv.GaussianBlur(src=img_g, ksize=(3, 3), sigmaX=0)
 
     contours_array = get_contours_array(img_g_blur)[0]
     threshold = get_contours_array(img_g_blur)[1]
-    background = cv.inRange(src=img_g, lowerb=threshold, upperb=255)
-    img[background > threshold] = WHITE  # Change colour of all background pixels to white
+    print(f'threshold: {threshold}')
 
     num_pieces_index = 0  # Not all contours enclose a piece; num_pieces_index
     # keeps track of the index of a contour which does enclose a piece
@@ -117,22 +116,30 @@ def rotate_and_square_crop(img, dst_dir):
             bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
 
             # Expand image border using lengths
-            square_and_cropped_img = cv.copyMakeBorder(src=cropped_img,
+            segmented_img = cv.copyMakeBorder(src=cropped_img,
                                                        top=top_border_width,
                                                        bottom=bottom_border_width,
                                                        right=right_border_width,
                                                        left=left_border_width,
                                                        borderType=cv.BORDER_CONSTANT,
                                                        value=WHITE)
+            # Determine threshold for each segmented image
+            segmented_img_grey = cv.cvtColor(segmented_img, cv.COLOR_BGR2GRAY)
+            segmented_threshold, _ = cv.threshold(src=segmented_img_grey, thresh=0, maxval=255,
+                                                  type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
+            background = cv.inRange(src=segmented_img_grey, lowerb=threshold, upperb=255)
+            segmented_img[background > segmented_threshold] = WHITE  # Change colour of all background pixels to white
+
             # Scale down images to 256x256
             down_points = (256, 256)
-            img_downsized = cv.resize(src=square_and_cropped_img,
+            img_downsized = cv.resize(src=segmented_img,
                                       dsize=down_points,
                                       interpolation=cv.INTER_LINEAR)
-            img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}.png'
+
+
+            if isTest:
+                img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}.png'
+            else:
+                img_dst_dir = rf'{dst_dir}.png'
             cv.imwrite(img_dst_dir, img_downsized)
             num_pieces_index += 1
-
-
-def get_true_contours():
-    return true_contours
