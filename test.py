@@ -61,6 +61,8 @@ def main():
     # and the model prediction & probabilities of each Lego piece so that this information
     # can be drawn on the unsegmented image taken by the camera
     def run_test(src_dir, dst_dir, model):
+        for file_name in os.listdir(dst_dir):
+            os.remove(os.path.join(dst_dir, file_name))  # Clear the directory containing segmented testing images
         results = {}  # A dict containing the prediction, probability of prediction, coordinates
         # of the four corners of the bounding box of each piece,
         # and the center coordinates of each piece
@@ -101,8 +103,8 @@ def main():
 
         img_height = int(unsegmented_img_copy.shape[0])
         img_width = int(unsegmented_img.shape[1])
-        lcd_width = 1920
-        lcd_height = 1080
+        lcd_width = 1366
+        lcd_height = 768
         scale_factor = 2
         # Border must be positive; increase scale factor until its positive
         # This is just to prevent an exception from being thrown
@@ -158,6 +160,7 @@ def main():
         img_width = int(unsegmented_img_copy_w_border.shape[1])
         # Resize image so it fits on the monitor
         down_points = (img_width // scale_factor, img_height // scale_factor)
+        print(f'display resolution: {down_points}')
         unsegmented_img_downsized = cv.resize(src=unsegmented_img_copy_w_border,
                                               dsize=down_points,
                                               interpolation=cv.INTER_LINEAR)
@@ -168,17 +171,17 @@ def main():
         cv.waitKey()
         cv.destroyAllWindows()
 
-    dst_dir = rf'D:\lego-classification-using-ml\segmented-testing-images'
-    src_dir = rf'D:\lego-classification-using-ml\testing-images'
+    dst_dir = rf'E:\lego-classification-using-ml\segmented-testing-images'
+    src_dir = rf'E:\lego-classification-using-ml\testing-images'
     # subprocess.run(["D:\lego-classification-using-ml/livefeed.sh"])
-    model = tf.keras.models.load_model(rf'D:\lego-classification-using-ml\neural_net')
+    model = tf.keras.models.load_model(rf'E:\lego-classification-using-ml\neural_net')
     #subprocess.run(["D:\lego-classification-using-ml/take_pic.sh"])
     start_time = time.time()
 
     run_test(src_dir, dst_dir, model)
 
     end_time = time.time()
-    print(f'total time:{end_time - start_time}')
+    #print(f'total time:{end_time - start_time}')
 
 if __name__ == '__main__':
     main()
