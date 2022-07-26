@@ -5,6 +5,7 @@ WHITE = [255, 255, 255]
 BLACK = [0, 0, 0]
 true_contours = []
 
+
 # This module provides functions that can be used to pre-process
 # training and testing images
 def get_contours_array(img):
@@ -19,6 +20,25 @@ def get_contours_array(img):
     # where each contour is an array of points
 
     return contours_array, threshold  # Image can contain one or more contours
+
+# Sorts the contours based off of the size of the minimum bounding box enclosed by the contour
+# And returns an array of the index of the contours in order of descending bounding box size
+def get_index_largest_contours(contours_array):
+    b_box_array = []
+    for contour in contours_array:
+        b_box_rect = cv.minAreaRect(contour)
+        (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
+        b_box_array.append((b_box_width, b_box_height))
+    b_box_list = list(enumerate(b_box_array))
+    sorted_b_box_list = sorted(b_box_list, key=lambda x: x[1], reverse=True)  # The lambda function allows for the list
+    # to be sorted by the tuple with the largest
+    # width and height, while keeping the index
+    # of the the contour in the initial list
+    contours_descending_order = []
+    for i in range(len(sorted_b_box_list)):
+        contours_descending_order.append(sorted_b_box_list[i][0])
+    return contours_descending_order
+
 
 # Return the length that extends the images border so that the image
 # has a square aspect ratio but the image remains centered in the image
@@ -74,72 +94,75 @@ def get_bounding_box_info(b_box_rect):
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
 def rotate_and_square_crop(img, dst_dir, isTest):
-    #max_border = 399 + 10 # For real images
+    # max_border = 399 + 10 # For real images
     max_border = 420 + 10  # For 3D CAD images
 
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
     img_g_blur = cv.GaussianBlur(src=img_g, ksize=(3, 3), sigmaX=0)
-
     contours_array = get_contours_array(img_g_blur)[0]
     threshold = get_contours_array(img_g_blur)[1]
-    print(f'threshold: {threshold}')
 
     num_pieces_index = 0  # Not all contours enclose a piece; num_pieces_index
     # keeps track of the index of a contour which does enclose a piece
 
-    for contour in contours_array:
+    sorted_contour_indices = get_index_largest_contours(contours_array)
+    for i in sorted_contour_indices:  # contours_array should be sorted prior to doing this
+        b_box_rect = cv.minAreaRect(contours_array[i])
+        (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
+        next_b_box_rect = cv.minAreaRect(contours_array[i+1])
+        (next_b_box_width, next_b_box_height) = get_bounding_box_info(next_b_box_rect)[0]
+        if b_box_width > 5*next_b_box_width or b_box_height > 5*next_b_box_height:
+            break   # If the bounding box of the next piece is significantly smaller than the current piece
+        else:
+            true_contours.append(contour)   # Otherwise, add that contour
+
+    for contour in true_contours:
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
 
-        # If the bounding box is very small, it's not enclosing a piece
-        if b_box_width > 200 or b_box_height > 200:
-            # keep at 250 for real pics, 200 for 3d
-            true_contours.append(contour)
+        cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
+        # respect to the angle of each bounding box in the image
+        (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
+        b_box_angle = 0
+        rotated_b_box_rect = ((b_box_c_x, b_box_c_y),  # Align bounding box
+                              (b_box_width, b_box_height), b_box_angle)  # parallel to image borders
 
-            cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
-            # respect to the angle of each bounding box in the image
-            (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
-            b_box_angle = 0
-            rotated_b_box_rect = ((b_box_c_x, b_box_c_y),  # Align bounding box
-                                  (b_box_width, b_box_height), b_box_angle)  # parallel to image borders
+        (rotated_b_box_c_x, rotated_b_box_c_y) = get_bounding_box_info(rotated_b_box_rect)[1]
+        (rotated_min_x, rotated_min_y,
+         rotated_max_x, rotated_max_y) = get_bounding_box_info(rotated_b_box_rect)[3]
 
-            (rotated_b_box_c_x, rotated_b_box_c_y) = get_bounding_box_info(rotated_b_box_rect)[1]
-            (rotated_min_x, rotated_min_y,
-             rotated_max_x, rotated_max_y) = get_bounding_box_info(rotated_b_box_rect)[3]
+        # Center object in image by expanding border so all images
+        # are scaled relative to each other
+        # Determine lengths needed to expand image border
+        right_border_width = max_border - (rotated_max_x - rotated_b_box_c_x)
+        top_border_width = max_border - (rotated_b_box_c_y - rotated_min_y)
+        left_border_width = max_border - (rotated_b_box_c_x - rotated_min_x)
+        bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
 
-            # Center object in image by expanding border so all images
-            # are scaled relative to each other
-            # Determine lengths needed to expand image border
-            right_border_width = max_border - (rotated_max_x - rotated_b_box_c_x)
-            top_border_width = max_border - (rotated_b_box_c_y - rotated_min_y)
-            left_border_width = max_border - (rotated_b_box_c_x - rotated_min_x)
-            bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
+        # Expand image border using lengths
+        segmented_img = cv.copyMakeBorder(src=cropped_img,
+                                          top=top_border_width,
+                                          bottom=bottom_border_width,
+                                          right=right_border_width,
+                                          left=left_border_width,
+                                          borderType=cv.BORDER_CONSTANT,
+                                          value=WHITE)
+        # Determine threshold for each segmented image
+        segmented_img_grey = cv.cvtColor(segmented_img, cv.COLOR_BGR2GRAY)
+        segmented_threshold, _ = cv.threshold(src=segmented_img_grey, thresh=0, maxval=255,
+                                              type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
+        background = cv.inRange(src=segmented_img_grey, lowerb=threshold, upperb=255)
+        segmented_img[background > segmented_threshold] = WHITE  # Change colour of all background pixels to white
 
-            # Expand image border using lengths
-            segmented_img = cv.copyMakeBorder(src=cropped_img,
-                                                       top=top_border_width,
-                                                       bottom=bottom_border_width,
-                                                       right=right_border_width,
-                                                       left=left_border_width,
-                                                       borderType=cv.BORDER_CONSTANT,
-                                                       value=WHITE)
-            # Determine threshold for each segmented image
-            segmented_img_grey = cv.cvtColor(segmented_img, cv.COLOR_BGR2GRAY)
-            segmented_threshold, _ = cv.threshold(src=segmented_img_grey, thresh=0, maxval=255,
-                                                  type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
-            background = cv.inRange(src=segmented_img_grey, lowerb=threshold, upperb=255)
-            segmented_img[background > segmented_threshold] = WHITE  # Change colour of all background pixels to white
+        # Scale down images to 256x256
+        down_points = (256, 256)
+        img_downsized = cv.resize(src=segmented_img,
+                                  dsize=down_points,
+                                  interpolation=cv.INTER_LINEAR)
 
-            # Scale down images to 256x256
-            down_points = (256, 256)
-            img_downsized = cv.resize(src=segmented_img,
-                                      dsize=down_points,
-                                      interpolation=cv.INTER_LINEAR)
-
-
-            if isTest:
-                img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}.png'
-            else:
-                img_dst_dir = rf'{dst_dir}.png'
-            cv.imwrite(img_dst_dir, img_downsized)
-            num_pieces_index += 1
+        if isTest:
+            img_dst_dir = rf'{dst_dir}\{str(num_pieces_index)}.png'
+        else:
+            img_dst_dir = rf'{dst_dir}.png'
+        cv.imwrite(img_dst_dir, img_downsized)
+        num_pieces_index += 1
