@@ -142,9 +142,12 @@ def main():
             for k in range(4):
                 translated_segmented_img_b_box[k] = translated_segmented_img_b_box[k] + (right, top)
 
-            colour = (random.randint(0, 256), random.randint(0, 256), random.randint(0, 256))
+            color_vals = [0, 256]
+            colour = (color_vals[random.randint(0, 1)],
+                      color_vals[random.randint(0, 1)],
+                      color_vals[random.randint(0, 1)])
             # Draw contour of bounding box on unsegmented image in a random colour
-            cv.drawContours(unsegmented_img_copy_w_border, [translated_segmented_img_b_box], 0, colour, 10)
+            cv.drawContours(unsegmented_img_copy_w_border, [translated_segmented_img_b_box], 0, colour, 8)
 
             draw_text_with_outline(img=unsegmented_img_copy_w_border,
                                    text=segmented_img_label,
