@@ -98,7 +98,8 @@ def rotate_and_square_crop(img, dst_dir, isTest):
     max_border = 420 + 10  # For 3D CAD images
 
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
-    img_g_blur = cv.GaussianBlur(src=img_g, ksize=(3, 3), sigmaX=0)
+    img_g_blur = cv.GaussianBlur(src=img_g, ksize=(13, 13), sigmaX=0)  # Kernel size has to be an odd number
+
     contours_array = get_contours_array(img_g_blur)[0]
     threshold = get_contours_array(img_g_blur)[1]
 
@@ -106,20 +107,28 @@ def rotate_and_square_crop(img, dst_dir, isTest):
     # keeps track of the index of a contour which does enclose a piece
 
     sorted_contour_indices = get_index_largest_contours(contours_array)
-    for i in sorted_contour_indices:  # contours_array should be sorted prior to doing this
-        b_box_rect = cv.minAreaRect(contours_array[i])
+    for i, contour_index in enumerate(sorted_contour_indices):  # contours_array should be sorted prior to doing this
+        b_box_rect = cv.minAreaRect(contours_array[contour_index])
         (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
-        next_b_box_rect = cv.minAreaRect(contours_array[i+1])
-        (next_b_box_width, next_b_box_height) = get_bounding_box_info(next_b_box_rect)[0]
-        if b_box_width > 5*next_b_box_width or b_box_height > 5*next_b_box_height:
-            break   # If the bounding box of the next piece is significantly smaller than the current piece
-        else:
-            true_contours.append(contour)   # Otherwise, add that contour
+        try:
+            next_b_box_rect = cv.minAreaRect(contours_array[sorted_contour_indices[i+1]])
+            (next_b_box_width, next_b_box_height) = get_bounding_box_info(next_b_box_rect)[0]
+
+            if b_box_width > 5 * next_b_box_width or b_box_height > 5 * next_b_box_height:
+                true_contours.append(contours_array[        # Add the last true piece
+                                         contour_index])
+                break                                       # And ignore the rest of the contours
+            else:
+                 true_contours.append(contours_array[
+                                         contour_index])  # If the bounding box of the next piece
+                # is significantly smaller than the current piece
+        except IndexError as error:
+            true_contours.append(contours_array[contour_index])    # If there are no more contours
+            # to check against, then just dont check next contour
 
     for contour in true_contours:
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
-
         cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
         # respect to the angle of each bounding box in the image
         (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
