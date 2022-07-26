@@ -43,7 +43,7 @@ def main():
         return label
 
     # Draws text at the center of each box; used to display the prediction & probabilities
-    def draw_text_with_outline(img, center, text):
+    def draw_text_with_outline(colour, img, center, text):
         # Outline
         cv.putText(img=img, text=text,
                    org=center,
@@ -54,7 +54,7 @@ def main():
         cv.putText(img=img, text=text,
                    org=center,
                    fontFace=cv.FONT_HERSHEY_SIMPLEX,
-                   fontScale=1.5, color=WHITE, thickness=3,
+                   fontScale=1.5, color=colour, thickness=3,
                    lineType=cv.LINE_AA)
 
     # Create a dictionary that contains information on the bounding box coordinates
@@ -149,12 +149,14 @@ def main():
             # Draw contour of bounding box on unsegmented image in a random colour
             cv.drawContours(unsegmented_img_copy_w_border, [translated_segmented_img_b_box], 0, colour, 8)
 
-            draw_text_with_outline(img=unsegmented_img_copy_w_border,
+            draw_text_with_outline(colour=colour,
+                                   img=unsegmented_img_copy_w_border,
                                    text=segmented_img_label,
                                    center=(translated_segmented_img_b_box_c_x,
                                            translated_segmented_img_b_box_c_y))
 
-            draw_text_with_outline(img=unsegmented_img_copy_w_border,
+            draw_text_with_outline(colour=colour,
+                                   img=unsegmented_img_copy_w_border,
                                    text=segmented_img_probability,
                                    center=(translated_segmented_img_b_box_c_x,
                                            translated_segmented_img_b_box_c_y + 60))
