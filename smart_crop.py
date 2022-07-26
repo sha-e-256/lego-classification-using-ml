@@ -135,7 +135,7 @@ def rotate_and_square_crop(img, dst_dir, isTest):
         b_box_angle = 0
         rotated_b_box_rect = ((b_box_c_x, b_box_c_y),  # Align bounding box
                               (b_box_width, b_box_height), b_box_angle)  # parallel to image borders
-        max_length = b_box_width if b_box_width > b_box_height else b_box_height  # The maximum length to extend the border
+        max_length = b_box_width if b_box_width >= b_box_height else b_box_height  # The maximum length to extend the border
 
         # so that the image becomes square is the maximum of the width and the height
 
@@ -150,12 +150,12 @@ def rotate_and_square_crop(img, dst_dir, isTest):
             # Only add from the top
             top_border_width = max_length//2 - b_box_height//2 + 2
             bottom_border_width = max_length//2 - b_box_height//2 + 2
-            left_border_width = 0
-            right_border_width = 0
+            left_border_width = 2  # Only add offset
+            right_border_width = 2
         if max_length == b_box_height:
             # Only add from the sides
-            top_border_width = 0
-            bottom_border_width = 0
+            top_border_width = 2
+            bottom_border_width = 2
             left_border_width = max_length // 2 - b_box_width // 2 + 2
             right_border_width = max_length // 2 - b_box_width // 2 + 2
 
