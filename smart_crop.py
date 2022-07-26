@@ -94,9 +94,6 @@ def get_bounding_box_info(b_box_rect):
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
 def rotate_and_square_crop(img, dst_dir, isTest):
-    # max_border = 399 + 10 # For real images
-    max_border = 420 + 10  # For 3D CAD images
-
     img_g = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # Convert image to greyscale
     img_g_blur = cv.GaussianBlur(src=img_g, ksize=(13, 13), sigmaX=0)  # Kernel size has to be an odd number
 
@@ -130,11 +127,17 @@ def rotate_and_square_crop(img, dst_dir, isTest):
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
         cropped_img = rotate_img(img, b_box_rect)  # Rotate the image with
+        # cv.imshow('cropped_img', cropped_img)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
         # respect to the angle of each bounding box in the image
         (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
         b_box_angle = 0
         rotated_b_box_rect = ((b_box_c_x, b_box_c_y),  # Align bounding box
                               (b_box_width, b_box_height), b_box_angle)  # parallel to image borders
+        max_length = b_box_width if b_box_width > b_box_height else b_box_height  # The maximum length to extend the border
+
+        # so that the image becomes square is the maximum of the width and the height
 
         (rotated_b_box_c_x, rotated_b_box_c_y) = get_bounding_box_info(rotated_b_box_rect)[1]
         (rotated_min_x, rotated_min_y,
@@ -143,10 +146,23 @@ def rotate_and_square_crop(img, dst_dir, isTest):
         # Center object in image by expanding border so all images
         # are scaled relative to each other
         # Determine lengths needed to expand image border
-        right_border_width = max_border - (rotated_max_x - rotated_b_box_c_x)
-        top_border_width = max_border - (rotated_b_box_c_y - rotated_min_y)
-        left_border_width = max_border - (rotated_b_box_c_x - rotated_min_x)
-        bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
+        if max_length == b_box_width:
+            # Only add from the top
+            top_border_width = max_length//2 - b_box_height//2 + 2
+            bottom_border_width = max_length//2 - b_box_height//2 + 2
+            left_border_width = 0
+            right_border_width = 0
+        if max_length == b_box_height:
+            # Only add from the sides
+            top_border_width = 0
+            bottom_border_width = 0
+            left_border_width = max_length // 2 - b_box_width // 2 + 2
+            right_border_width = max_length // 2 - b_box_width // 2 + 2
+
+        # right_border_width = max_border - (rotated_max_x - rotated_b_box_c_x)
+        # top_border_width = max_border - (rotated_b_box_c_y - rotated_min_y)
+        # left_border_width = max_border - (rotated_b_box_c_x - rotated_min_x)
+        # bottom_border_width = max_border - (rotated_max_y - rotated_b_box_c_y)
 
         # Expand image border using lengths
         segmented_img = cv.copyMakeBorder(src=cropped_img,
