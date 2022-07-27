@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import imutils
 
 WHITE = [255, 255, 255]
 BLACK = [0, 0, 0]
@@ -62,43 +63,45 @@ def rotate_img(img, b_box_rect):
     (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
     (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
     b_box_angle = get_bounding_box_info(b_box_rect)[2]
+    img_center_x = img_width // 2
+    img_center_y = img_height //2
 
-    # Rotate image about center of bounding box rectangle
-    rotation_matrix = cv.getRotationMatrix2D(center=(img_width // 2,
-                                                     img_height // 2),
+    # Rotate image about center of image
+    rotation_matrix = cv.getRotationMatrix2D(center=(img_center_x, img_center_y),
                                              angle=b_box_angle, scale=1)
-    # # Expand image border using lengths
-    # img = cv.copyMakeBorder(src=img,
-    #                                   top=img_height//2,
-    #                                   bottom=img_height//2,
-    #                                   right=img_width//2,
-    #                                   left=img_width//2,
-    #                                   borderType=cv.BORDER_CONSTANT,
-    #                                   value=WHITE)
+
+    cos_rotation_matrix = np.abs(rotation_matrix[0][0])
+    sin_rotation_matrix = np.abs(rotation_matrix[0][1])
+
+    rotated_img_height = int((img_height * sin_rotation_matrix) +
+                         (img_width * cos_rotation_matrix))
+    rotated_img_width = int((img_height * cos_rotation_matrix) +
+                        (img_width * sin_rotation_matrix))
+
+    rotation_matrix[0][2] += (rotated_img_width // 2) - img_center_x
+    rotation_matrix[1][2] += (rotated_img_height // 2) - img_center_y
 
     rotated_img = cv.warpAffine(src=img, M=rotation_matrix,
-                                dsize=(img_width, img_height),
-                                borderMode=cv.BORDER_CONSTANT, borderValue=WHITE)
-
+                                dsize=(rotated_img_width, rotated_img_height),
+                                borderMode=cv.BORDER_CONSTANT, borderValue=(0, 0, 255))
     test_img = rotated_img.copy()
-    #cv.drawContours(test_img, true_contours, -1, [255, 0, 0], 5)  # Draw all contours
+    # cv.drawContours(test_img, true_contours, -1, [255, 0, 0], 5)  # Draw all contours
     test_img = cv.resize(src=test_img,
-                    dsize=(1920 // 2, 1080 // 2),
-                    interpolation=cv.INTER_LINEAR)
+                         dsize=(img_width // 4, img_height // 4),
+                         interpolation=cv.INTER_LINEAR)
     cv.imshow('img', test_img)
     cv.waitKey()
     cv.destroyAllWindows()
 
-    rotated_b_box_rect = (b_box_rect[0], b_box_rect[1], 0)
     b_box = cv.boxPoints(b_box_rect)
-    pts = np.int0(cv.transform(np.array([b_box]), rotation_matrix))[0]
+    rotated_b_box = cv.transform(np.array([b_box]), rotation_matrix)
+    pts = np.int0(rotated_b_box)[0]
     pts[pts < 0] = 0
 
     # cropped_img = cv.getRectSubPix(image=rotated_img, patchSize=(b_box_width, b_box_height),
     #                                center=(b_box_c_x, b_box_c_y))
 
     cropped_img = rotated_img[pts[1][1]:pts[0][1], pts[1][0]: pts[2][0]]
-
     cv.imshow('img', cropped_img)
     cv.waitKey()
     cv.destroyAllWindows()
