@@ -21,6 +21,7 @@ def get_contours_array(img):
 
     return contours_array, threshold  # Image can contain one or more contours
 
+
 # Sorts the contours based off of the size of the minimum bounding box enclosed by the contour
 # And returns an array of the index of the contours in order of descending bounding box size
 def get_index_largest_contours(contours_array):
@@ -34,6 +35,7 @@ def get_index_largest_contours(contours_array):
     # to be sorted by the tuple with the largest
     # width and height, while keeping the index
     # of the the contour in the initial list
+
     contours_descending_order = []
     for i in range(len(sorted_b_box_list)):
         contours_descending_order.append(sorted_b_box_list[i][0])
@@ -54,22 +56,54 @@ def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
 # and increase the width and height of the image so that
 # the corners of the image do not get cut off after rotation
 def rotate_img(img, b_box_rect):
-    img_height = int(img.shape[0])
-    img_width = int(img.shape[1])
+
+    img_height = int(img.shape[0])   # Rows
+    img_width = int(img.shape[1])  # Cols
     (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
     (b_box_c_x, b_box_c_y) = get_bounding_box_info(b_box_rect)[1]
     b_box_angle = get_bounding_box_info(b_box_rect)[2]
 
     # Rotate image about center of bounding box rectangle
-    rotation_matrix = cv.getRotationMatrix2D(center=(b_box_c_x, b_box_c_y),
+    rotation_matrix = cv.getRotationMatrix2D(center=(img_width // 2,
+                                                     img_height // 2),
                                              angle=b_box_angle, scale=1)
+    # # Expand image border using lengths
+    # img = cv.copyMakeBorder(src=img,
+    #                                   top=img_height//2,
+    #                                   bottom=img_height//2,
+    #                                   right=img_width//2,
+    #                                   left=img_width//2,
+    #                                   borderType=cv.BORDER_CONSTANT,
+    #                                   value=WHITE)
 
     rotated_img = cv.warpAffine(src=img, M=rotation_matrix,
                                 dsize=(img_width, img_height),
                                 borderMode=cv.BORDER_CONSTANT, borderValue=WHITE)
 
-    cropped_img = cv.getRectSubPix(image=rotated_img, patchSize=(b_box_width, b_box_height),
-                                   center=(b_box_c_x, b_box_c_y))
+    test_img = rotated_img.copy()
+    #cv.drawContours(test_img, true_contours, -1, [255, 0, 0], 5)  # Draw all contours
+    test_img = cv.resize(src=test_img,
+                    dsize=(1920 // 2, 1080 // 2),
+                    interpolation=cv.INTER_LINEAR)
+    cv.imshow('img', test_img)
+    cv.waitKey()
+    cv.destroyAllWindows()
+
+    rotated_b_box_rect = (b_box_rect[0], b_box_rect[1], 0)
+    b_box = cv.boxPoints(b_box_rect)
+    pts = np.int0(cv.transform(np.array([b_box]), rotation_matrix))[0]
+    pts[pts < 0] = 0
+
+    # cropped_img = cv.getRectSubPix(image=rotated_img, patchSize=(b_box_width, b_box_height),
+    #                                center=(b_box_c_x, b_box_c_y))
+
+    cropped_img = rotated_img[pts[1][1]:pts[0][1], pts[1][0]: pts[2][0]]
+
+    cv.imshow('img', cropped_img)
+    cv.waitKey()
+    cv.destroyAllWindows()
+
+
     return cropped_img
 
 
@@ -99,7 +133,6 @@ def rotate_and_square_crop(img, dst_dir, isTest):
 
     contours_array = get_contours_array(img_g_blur)[0]
     threshold = get_contours_array(img_g_blur)[1]
-
     num_pieces_index = 0  # Not all contours enclose a piece; num_pieces_index
     # keeps track of the index of a contour which does enclose a piece
 
@@ -108,21 +141,30 @@ def rotate_and_square_crop(img, dst_dir, isTest):
         b_box_rect = cv.minAreaRect(contours_array[contour_index])
         (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
         try:
-            next_b_box_rect = cv.minAreaRect(contours_array[sorted_contour_indices[i+1]])
+            next_b_box_rect = cv.minAreaRect(contours_array[sorted_contour_indices[i + 1]])
             (next_b_box_width, next_b_box_height) = get_bounding_box_info(next_b_box_rect)[0]
 
-            if b_box_width > 5 * next_b_box_width or b_box_height > 5 * next_b_box_height:
-                true_contours.append(contours_array[        # Add the last true piece
+            if b_box_width > 10 * next_b_box_width or b_box_height > 10 * next_b_box_height:
+                true_contours.append(contours_array[  # Add the last true piece
                                          contour_index])
-                break                                       # And ignore the rest of the contours
+                break  # And ignore the rest of the contours
             else:
-                 true_contours.append(contours_array[
+                true_contours.append(contours_array[
                                          contour_index])  # If the bounding box of the next piece
-                # is significantly smaller than the current piece
+            # is significantly smaller than the current piece
         except IndexError as error:
-            true_contours.append(contours_array[contour_index])    # If there are no more contours
+            true_contours.append(contours_array[contour_index])  # If there are no more contours
             # to check against, then just dont check next contour
 
+    # test_img = img.copy()
+    # cv.drawContours(test_img, true_contours, -1, [255, 0, 0], 5)  # Draw all contours
+    # test_img = cv.resize(src=test_img,
+    #                 dsize=(1366 // 2, 768 // 2),
+    #                 interpolation=cv.INTER_LINEAR)
+    # cv.imshow('img', test_img)
+    # cv.waitKey()
+    # cv.destroyAllWindows()
+    print(len(true_contours))
     for contour in true_contours:
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_info(b_box_rect)[0]
@@ -148,8 +190,8 @@ def rotate_and_square_crop(img, dst_dir, isTest):
         # Determine lengths needed to expand image border
         if max_length == b_box_width:
             # Only add from the top
-            top_border_width = max_length//2 - b_box_height//2 + 2
-            bottom_border_width = max_length//2 - b_box_height//2 + 2
+            top_border_width = max_length // 2 - b_box_height // 2 + 2
+            bottom_border_width = max_length // 2 - b_box_height // 2 + 2
             left_border_width = 2  # Only add offset
             right_border_width = 2
         if max_length == b_box_height:
