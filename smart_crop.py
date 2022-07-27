@@ -13,7 +13,7 @@ true_contours = []  # An array of contours that are enclosing a piece (and not j
 def get_threshold_and_contours(img):
     img_grey = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     img_grey_blur = cv.GaussianBlur(src=img_grey,
-                                    ksize=(13, 13), sigmaX=0)  # Kernel size has to be an odd number
+                                    ksize=(19, 19), sigmaX=0)  # Kernel size has to be an odd number
     threshold, img_mask = cv.threshold(src=img_grey_blur, thresh=0, maxval=255,
                                        type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
     contours = cv.findContours(image=img_mask, mode=cv.RETR_EXTERNAL,
@@ -51,7 +51,8 @@ def get_contours_sorted_by_descending_size(contours):
     # to be sorted by the size of the bounding box
     # while maintaining the index
     # of the contour in the initial unsorted list
-
+    # for box in sorted_b_boxes:
+    #     print(f'{box}\n')
     contours_descending_size = []
     for i in range(len(sorted_b_boxes)):
         contours_descending_size.append(sorted_b_boxes[i][0])
@@ -100,11 +101,11 @@ def rotate_and_crop_img(img, contour):
     rotated_img = cv.warpAffine(src=img, M=rotation_matrix,
                                 dsize=(rotated_img_width, rotated_img_height),
                                 borderMode=cv.BORDER_CONSTANT, borderValue=WHITE)
-    # DEBUG
-    test_img = cv.resize(src=rotated_img, dsize=(2048//4, 2048//4 ), interpolation=cv.INTER_LINEAR)
-    cv.imshow('r', test_img)
-    cv.waitKey()
-    cv.destroyAllWindows()
+    # # DEBUG
+    # test_img = cv.resize(src=rotated_img, dsize=(2048//4, 2048//4 ), interpolation=cv.INTER_LINEAR)
+    # cv.imshow('r', test_img)
+    # cv.waitKey()
+    # cv.destroyAllWindows()
 
     b_box = cv.boxPoints(b_box_rect)
     # Rotate/translate bounding box using the rotation matrix
@@ -116,9 +117,9 @@ def rotate_and_crop_img(img, contour):
     min_y = points[1][0]
     max_y = points[2][0]
     cropped_img = rotated_img[min_x:max_x, min_y:max_y]
-    cv.imshow('c', cropped_img)
-    cv.waitKey()
-    cv.destroyAllWindows()
+    # cv.imshow('c', cropped_img)
+    # cv.waitKey()
+    # cv.destroyAllWindows()
     return cropped_img
 
 def clear_background(img, total_threshold):
@@ -133,6 +134,7 @@ def clear_background(img, total_threshold):
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
 def smart_crop(img, dst_dir, isTest):
+    true_contours.clear()
     threshold, contours = get_threshold_and_contours(img)
     contours_descending_size = get_contours_sorted_by_descending_size(contours)
     for i, contour_index in enumerate(contours_descending_size):
@@ -148,13 +150,14 @@ def smart_crop(img, dst_dir, isTest):
             next_b_box_rect = cv.minAreaRect(contours[contours_descending_size[i + 1]])
             (next_b_box_width, next_b_box_height) = get_bounding_box_size(next_b_box_rect)
             true_contours.append(contours[contour_index])  # Add the current contour
-            if b_box_width > 10 * next_b_box_width or b_box_height > 10 * next_b_box_height:
+            if b_box_width > 5 * next_b_box_width or b_box_height > 5 * next_b_box_height:
                 break  # Ignore the rest of the contours
         except IndexError as error:
             true_contours.append(contours[contour_index])
             # If there are no more contours to check against,
             # add the current piece
 
+    print(len(true_contours))
     for i, contour in enumerate(true_contours):
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
@@ -206,5 +209,5 @@ def smart_crop(img, dst_dir, isTest):
             img_dst_dir = rf'{dst_dir}\{str(i)}.png'
         else:
             # Name file depending on source filename
-            img_dst_dir = rf'{dst_dir}.png'
+            img_dst_dir = rf'{dst_dir}-{str(i)}.png'
         cv.imwrite(img_dst_dir, img_downsized)
