@@ -13,7 +13,10 @@ true_contours = []  # An array of contours that are enclosing a piece (and not j
 def get_threshold_and_contours(img):
     img_grey = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     img_grey_blur = cv.GaussianBlur(src=img_grey,
-                                    ksize=(19, 19), sigmaX=0)  # Kernel size has to be an odd number
+                                    ksize=(3, 3), sigmaX=0)  # Kernel size has to be an odd number
+    # cv.imshow('img', img_grey_blur)
+    # cv.waitKey()
+    # cv.destroyAllWindows()
     threshold, img_mask = cv.threshold(src=img_grey_blur, thresh=0, maxval=255,
                                        type=(cv.THRESH_BINARY_INV + cv.THRESH_OTSU))
     contours = cv.findContours(image=img_mask, mode=cv.RETR_EXTERNAL,
@@ -137,77 +140,84 @@ def smart_crop(img, dst_dir, isTest):
     true_contours.clear()
     threshold, contours = get_threshold_and_contours(img)
     contours_descending_size = get_contours_sorted_by_descending_size(contours)
+    # for i, contour_index in enumerate(contours_descending_size):
+    #     # The contour index states the order that the bounding boxes are sorted
+    #     # So if contours_descending_size = [2, 5] then contours[2] is the contour
+    #     # with the maximum bounding box size
+    #     b_box_rect = cv.minAreaRect(contours[contour_index])
+    #     (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
+    #     try:
+    #         # Examine the next biggest contour and check if the current contour
+    #         # is at least 10x bigger than the next contour; if it is, then
+    #         # the next contour is enclosing glare, not an actual piece
+    #         next_b_box_rect = cv.minAreaRect(contours[contours_descending_size[i + 1]])
+    #         (next_b_box_width, next_b_box_height) = get_bounding_box_size(next_b_box_rect)
+    #         true_contours.append(contours[contour_index])  # Add the current contour
+    #         if b_box_width < 200 or b_box_height < 200 :
+    #             # Smallest piece is 1x4 (100px), and 2x3 (193)
+    #             break  # Ignore the rest of the contours
+    #     except IndexError as error:
+    #         true_contours.append(contours[contour_index])
+    #         # If there are no more contours to check against,
+    #         # add the current piece
     for i, contour_index in enumerate(contours_descending_size):
-        # The contour index states the order that the bounding boxes are sorted
-        # So if contours_descending_size = [2, 5] then contours[2] is the contour
-        # with the maximum bounding box size
-        b_box_rect = cv.minAreaRect(contours[contour_index])
-        (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
-        try:
-            # Examine the next biggest contour and check if the current contour
-            # is at least 10x bigger than the next contour; if it is, then
-            # the next contour is enclosing glare, not an actual piece
-            next_b_box_rect = cv.minAreaRect(contours[contours_descending_size[i + 1]])
-            (next_b_box_width, next_b_box_height) = get_bounding_box_size(next_b_box_rect)
-            true_contours.append(contours[contour_index])  # Add the current contour
-            if b_box_width > 5 * next_b_box_width or b_box_height > 5 * next_b_box_height:
-                break  # Ignore the rest of the contours
-        except IndexError as error:
-            true_contours.append(contours[contour_index])
-            # If there are no more contours to check against,
-            # add the current piece
-
-    print(len(true_contours))
-    for i, contour in enumerate(true_contours):
+        contour = contours[contour_index]
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
-        cropped_img = rotate_and_crop_img(img, contour)  # Rotate the image with
+        if b_box_width > 200 or b_box_height > 200:
+            true_contours.append(contour)
+            b_box_rect = cv.minAreaRect(contour)
+            (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
+            cropped_img = rotate_and_crop_img(img, contour)  # Rotate the image with
 
-        # Expand border of image so that segmented image is a square
-        # (it has a 1:1 aspect ratio)
-        max_length = b_box_width if \
-            b_box_width >= b_box_height else b_box_height
-        offset = 2
-        if max_length == b_box_width:
-            # Only add from the top
-            top_border_width = max_length // 2 - b_box_height // 2 + offset
-            bottom_border_width = max_length // 2 - b_box_height // 2 + offset
-            left_border_width = offset  # Only add offset
-            right_border_width = offset
-        if max_length == b_box_height:
-            # Only add from the sides
-            top_border_width = offset
-            bottom_border_width = offset
-            left_border_width = max_length // 2 - b_box_width // 2 + offset
-            right_border_width = max_length // 2 - b_box_width // 2 + offset
-        segmented_img = cv.copyMakeBorder(src=cropped_img,
-                                          top=top_border_width,
-                                          bottom=bottom_border_width,
-                                          right=right_border_width,
-                                          left=left_border_width,
-                                          borderType=cv.BORDER_CONSTANT,
-                                          value=WHITE)
+            # Expand border of image so that segmented image is a square
+            # (it has a 1:1 aspect ratio)
+            max_length = b_box_width if \
+                b_box_width >= b_box_height else b_box_height
+            offset = 2
+            if max_length == b_box_width:
+                # Only add from the top
+                top_border_width = max_length // 2 - b_box_height // 2 + offset
+                bottom_border_width = max_length // 2 - b_box_height // 2 + offset
+                left_border_width = offset  # Only add offset
+                right_border_width = offset
+            if max_length == b_box_height:
+                # Only add from the sides
+                top_border_width = offset
+                bottom_border_width = offset
+                left_border_width = max_length // 2 - b_box_width // 2 + offset
+                right_border_width = max_length // 2 - b_box_width // 2 + offset
+            segmented_img = cv.copyMakeBorder(src=cropped_img,
+                                              top=top_border_width,
+                                              bottom=bottom_border_width,
+                                              right=right_border_width,
+                                              left=left_border_width,
+                                              borderType=cv.BORDER_CONSTANT,
+                                              value=WHITE)
 
-        # Determine threshold for each segmented image
-        # The threshold is calculated again because the threshold changes depending on the
-        # differences of the colour in the image; the first time it thresholds, it considers the
-        # colour of all the pieces & the background; the second time it thresholds,
-        # it considers only the colour of the piece in the cropped image & the background
+            # Determine threshold for each segmented image
+            # The threshold is calculated again because the threshold changes depending on the
+            # differences of the colour in the image; the first time it thresholds, it considers the
+            # colour of all the pieces & the background; the second time it thresholds,
+            # it considers only the colour of the piece in the cropped image & the background
 
-        # Remove background i.e. replace it with white
-        # **This part doesn't work when put inside of a function
-        segmented_img = clear_background(segmented_img, threshold)
-        # colour of all background pixels to white
+            # Remove background i.e. replace it with white
+            # **This part doesn't work when put inside of a function
+            segmented_img = clear_background(segmented_img, threshold)
+            # colour of all background pixels to white
 
-        # Scale down images to 256x256
-        down_points = (256, 256)
-        img_downsized = cv.resize(src=segmented_img,
-                                  dsize=down_points,
-                                  interpolation=cv.INTER_LINEAR)
-        if isTest:
-            # Name using number
-            img_dst_dir = rf'{dst_dir}\{str(i)}.png'
+            # Scale down images to 256x256
+            down_points = (256, 256)
+            downsized_img = cv.resize(src=segmented_img,
+                                      dsize=down_points,
+                                      interpolation=cv.INTER_LINEAR)
+
+            if isTest:
+                # Name using number
+                img_dst_dir = rf'{dst_dir}\{str(i)}.png'
+            else:
+                # Name file depending on source filename
+                img_dst_dir = rf'{dst_dir}-{str(i)}.png'
+            cv.imwrite(img_dst_dir, downsized_img)
         else:
-            # Name file depending on source filename
-            img_dst_dir = rf'{dst_dir}-{str(i)}.png'
-        cv.imwrite(img_dst_dir, img_downsized)
+            break
