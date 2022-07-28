@@ -5,7 +5,6 @@ import smart_crop as sc
 import numpy as np
 import random
 import tensorflow as tf
-
 import math
 from tensorflow import keras
 import subprocess
@@ -48,50 +47,55 @@ def main():
         cv.putText(img=img, text=text,
                    org=center,
                    fontFace=cv.FONT_HERSHEY_SIMPLEX,
-                   fontScale=1.5, color=BLACK, thickness=13,
+                   fontScale=1, color=BLACK, thickness=13,
                    lineType=cv.LINE_AA)
         # Text
         cv.putText(img=img, text=text,
                    org=center,
                    fontFace=cv.FONT_HERSHEY_SIMPLEX,
-                   fontScale=1.5, color=colour, thickness=3,
+                   fontScale=1, color=WHITE, thickness=3,
                    lineType=cv.LINE_AA)
 
     # Create a dictionary that contains information on the bounding box coordinates
     # and the model prediction & probabilities of each Lego piece so that this information
     # can be drawn on the unsegmented image taken by the camera
     def run_test(src_dir, dst_dir, model):
+
+
         for file_name in os.listdir(dst_dir):
             os.remove(os.path.join(dst_dir, file_name))  # Clear the directory containing segmented testing images
         results = {}  # A dict containing the prediction, probability of prediction, coordinates
         # of the four corners of the bounding box of each piece,
         # and the center coordinates of each piece
         unsegmented_img_src_dir = os.path.join(src_dir, '0.png')
+        # Add exception, this image must exist
         unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
         # taken by the camera
         unsegmented_img_copy = unsegmented_img.copy()
-        sc.rotate_and_square_crop(unsegmented_img, dst_dir, isTest=True)  # Generate segmented images
-        true_contours = sc.true_contours
-        # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented_img
-        segmented_img_names = os.listdir(dst_dir)
-        segmented_img_names_enum = enumerate(segmented_img_names)
-        for i, segmented_img_name in segmented_img_names_enum:
-            pathed = str(i) + ".png"
-            # print(segmented_img_name)
 
-            segmented_img_src_dir = os.path.join(dst_dir, pathed)  # Path of the segmented image
+        sc.smart_crop(unsegmented_img, dst_dir, isTest=True)  # Generate segmented images
+
+        true_contours = sc.true_contours
+
+        # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented_img
+        segmented_img_names = sorted(os.listdir(dst_dir))
+        for i in range(len(segmented_img_names)):
+            file_name = str(i) + '.png'
+
+            segmented_img_src_dir = os.path.join(dst_dir, file_name)  # Path of the segmented image
             segmented_img = cv.imread(segmented_img_src_dir, cv.IMREAD_GRAYSCALE)  # NumPy array of the segmented image
 
             segmented_img = np.array(segmented_img).reshape(-1, 256, 256, 1)
             segmented_img = segmented_img / 255.0
 
             # segmented_img: input to the model
+
             prediction = predicted_class(segmented_img, model)  # prediction: output from model
             probability = bounding_accuracy(segmented_img, model)  # 3 decimals  # probability: output from model
 
             # Once prediction has been determined, update the dictionary
             segmented_img_rect = cv.minAreaRect(true_contours[i])
-            (segmented_img_b_box_c_x, segmented_img_b_box_c_y) = sc.get_bounding_box_info(segmented_img_rect)[1]
+            (segmented_img_b_box_c_x, segmented_img_b_box_c_y) = sc.get_bounding_box_center(segmented_img_rect)
             segmented_img_b_box = np.int0(cv.boxPoints(segmented_img_rect))  # Coordinates of the four corners
 
             results[i] = {}
@@ -103,8 +107,8 @@ def main():
 
         img_height = int(unsegmented_img_copy.shape[0])
         img_width = int(unsegmented_img.shape[1])
-        lcd_width = 1366
-        lcd_height = 768
+        lcd_width = 1920
+        lcd_height = 1080
         scale_factor = 2
         # Border must be positive; increase scale factor until its positive
         # This is just to prevent an exception from being thrown
@@ -123,8 +127,8 @@ def main():
                                                           bottom=bottom,
                                                           right=right,
                                                           left=left,
-                                                          borderType=cv.BORDER_REPLICATE,
-                                                          value=WHITE)
+                                                          borderType=cv.BORDER_CONSTANT,
+                                                          value=BLACK)
 
             # Scale down images to 256x256
         for j in range(len(results)):
@@ -149,6 +153,8 @@ def main():
             # Draw contour of bounding box on unsegmented image in a random colour
             cv.drawContours(unsegmented_img_copy_w_border, [translated_segmented_img_b_box], 0, colour, 8)
 
+
+
             draw_text_with_outline(colour=colour,
                                    img=unsegmented_img_copy_w_border,
                                    text=segmented_img_label,
@@ -169,17 +175,17 @@ def main():
         unsegmented_img_downsized = cv.resize(src=unsegmented_img_copy_w_border,
                                               dsize=down_points,
                                               interpolation=cv.INTER_LINEAR)
-        sc.true_contours.clear()
+
         # Display image with bounding box information
         window_name = "unsegmented img with bounding boxes"
         cv.imshow(window_name, unsegmented_img_downsized)
         cv.waitKey()
         cv.destroyAllWindows()
 
-    dst_dir = rf'E:\lego-classification-using-ml\segmented-testing-images'
-    src_dir = rf'E:\lego-classification-using-ml\testing-images'
+    dst_dir = rf'D:\lego-classification-using-ml\segmented-testing-images'
+    src_dir = rf'D:\lego-classification-using-ml\testing-images'
     # subprocess.run(["D:\lego-classification-using-ml/livefeed.sh"])
-    model = tf.keras.models.load_model(rf'E:\lego-classification-using-ml\neural_net')
+    model = tf.keras.models.load_model(rf'D:\lego-classification-using-ml\neural_net')
     #subprocess.run(["D:\lego-classification-using-ml/take_pic.sh"])
     start_time = time.time()
 
