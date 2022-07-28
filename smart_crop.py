@@ -42,6 +42,30 @@ def get_bounding_box_center(b_box_rect):
     return b_box_c_x, b_box_c_y
 
 
+# Return coordinates of the four corners of the bounding box
+def get_bounding_box_points(np_array_b_box):
+    points = np.int0(np_array_b_box)[0]  # Array of points of the four corners of the bounding box
+    points[points < 0] = 0  # Set negative points to be equal to zero
+    min_x = points[1][1]
+    max_x = points[0][1]
+    min_y = points[1][0]
+    max_y = points[2][0]
+    return min_x, max_x, min_y, max_y
+
+# Return width and height of an image
+def get_img_size(img):
+    img_height = int(img.shape[0])  # Rows
+    img_width = int(img.shape[1])  # Cols
+    return img_width, img_height
+
+# Return center coordinates of img
+def get_img_center(img):
+    img_width, img_height = get_img_size(img)
+    img_center_x = img_width // 2
+    img_center_y = img_height // 2
+    return img_center_x, img_center_y
+
+
 # Sorts the contours based off of the size of the minimum bounding box enclosed by the contour
 # And returns an array of the index of the contours in order of descending bounding box size
 def get_contours_sorted_by_descending_size(contours):
@@ -55,7 +79,8 @@ def get_contours_sorted_by_descending_size(contours):
     # to be sorted by the size of the bounding box
     # while maintaining the index
     # of the contour in the initial unsorted list
-
+    for box in sorted_b_boxes:
+        print(box)
     contours_descending_size = []
     for i in range(len(sorted_b_boxes)):
         contours_descending_size.append(sorted_b_boxes[i][0])
@@ -78,10 +103,8 @@ def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
 # and increase the width and height of the image so that
 # the corners of the image do not get cut off after rotation
 def rotate_and_crop_img(img, contour):
-    img_height = int(img.shape[0])  # Rows
-    img_width = int(img.shape[1])  # Cols
-    img_center_x = img_width // 2
-    img_center_y = img_height // 2
+    img_width, img_height = get_img_size(img)
+    img_center_x, img_center_y = get_img_center(img)
     b_box_rect = cv.minAreaRect(contour)
     b_box_angle = b_box_rect[2]
 
@@ -108,14 +131,8 @@ def rotate_and_crop_img(img, contour):
     b_box = cv.boxPoints(b_box_rect)
     # Rotate/translate bounding box using the rotation matrix
     rotated_b_box = cv.transform(np.array([b_box]), rotation_matrix)
-    points = np.int0(rotated_b_box)[0]  # Array of points of the four corners of the bounding box
-    points[points < 0] = 0  # Set negative points to be equal to zero
-    min_x = points[1][1]
-    max_x = points[0][1]
-    min_y = points[1][0]
-    max_y = points[2][0]
+    min_x, max_x, min_y, max_y = get_bounding_box_points(rotated_b_box)
     cropped_img = rotated_img[min_x:max_x, min_y:max_y]
-
     return cropped_img
 
 
@@ -133,37 +150,46 @@ def clear_background(img, total_threshold):
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
 def smart_crop(img, dst_dir, isTest):
+    flag_previous_big = False
+    max_border = 399 + 10
     true_contours.clear()
     threshold, contours = get_threshold_and_contours(img)
     contours_descending_size = get_contours_sorted_by_descending_size(contours)
-
-    for i, contour_index in enumerate(contours_descending_size):
+    i = 0
+    while i < len(contours_descending_size):
+        print(i)
+        contour_index = contours_descending_size[i]
         contour = contours[contour_index]
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
-        if b_box_width > 200 or b_box_height > 200:
-            true_contours.append(contour)
-            b_box_rect = cv.minAreaRect(contour)
-            (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
-            cropped_img = rotate_and_crop_img(img, contour)  # Rotate the image with
 
-            # Expand border of image so that segmented image is a square
-            # (it has a 1:1 aspect ratio)
-            max_length = b_box_width if \
-                b_box_width >= b_box_height else b_box_height
-            offset = 2
-            if max_length == b_box_width:
-                # Only add from the top
-                top_border_width = max_length // 2 - b_box_height // 2 + offset
-                bottom_border_width = max_length // 2 - b_box_height // 2 + offset
-                left_border_width = offset  # Only add offset
-                right_border_width = offset
-            if max_length == b_box_height:
-                # Only add from the sides
-                top_border_width = offset
-                bottom_border_width = offset
-                left_border_width = max_length // 2 - b_box_width // 2 + offset
-                right_border_width = max_length // 2 - b_box_width // 2 + offset
+        cropped_img = rotate_and_crop_img(img, contour)
+        b_box_c_x, b_box_c_y = get_img_center(cropped_img)
+        min_x, min_y = 0, 0
+        max_x, max_y = get_img_size(cropped_img)
+        area = (max_x - min_x)*(max_y-min_y)
+        # Expand border of image so that segmented image is a square
+        # (it has a 1:1 aspect ratio)
+        right_border_width = max_border - (max_x - b_box_c_x)
+        top_border_width = max_border - (b_box_c_y - min_y)
+        left_border_width = max_border - (b_box_c_x - min_x)
+        bottom_border_width = max_border - (max_y - b_box_c_y)
+
+        if area < 44000: # 400 x 110 (4x1 plate: smallest piece)
+            print(f'too small:{(b_box_width, b_box_height)}')
+            break  # If the piece is so too small, the current contour and the rest
+        print('didnt break!')
+        # If there is a negative border, the piece its enclosing is a bunch of touching pieces
+        # so break the loop and move on to the next piece
+        if right_border_width > 0 \
+                and top_border_width > 0 \
+                and left_border_width > 0 \
+                and bottom_border_width > 0 \
+                and area < 218625: # 795 x 275 (1x8x2 arch: biggest piece)
+
+            print(f'just right:{(b_box_width, b_box_height)}')
+            true_contours.append(contour)  # Only if these two conditions are satisfied
+            # is the piece enclosed truly a contour
             segmented_img = cv.copyMakeBorder(src=cropped_img,
                                               top=top_border_width,
                                               bottom=bottom_border_width,
@@ -171,7 +197,6 @@ def smart_crop(img, dst_dir, isTest):
                                               left=left_border_width,
                                               borderType=cv.BORDER_CONSTANT,
                                               value=WHITE)
-
             # Remove background i.e. replace it with white
             segmented_img = clear_background(segmented_img, threshold)
             # colour of all background pixels to white
@@ -181,6 +206,8 @@ def smart_crop(img, dst_dir, isTest):
             downsized_img = cv.resize(src=segmented_img,
                                       dsize=down_points,
                                       interpolation=cv.INTER_LINEAR)
+            if flag_previous_big:
+                i -= 1
 
             if isTest:
                 # Name using number
@@ -189,5 +216,12 @@ def smart_crop(img, dst_dir, isTest):
                 # Name file depending on source filename
                 img_dst_dir = rf'{dst_dir}-{str(i)}.png'
             cv.imwrite(img_dst_dir, downsized_img)
+            if flag_previous_big:
+                flag_previous_big = False
         else:
-            break
+            print(f'too big:{(b_box_width, b_box_height)}')
+            flag_previous_big = True
+        i += 1
+        print('looping back...')
+
+
