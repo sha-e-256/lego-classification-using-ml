@@ -152,18 +152,48 @@ def clear_background(img):
     return img_mask
 
 
+# Find border of image that results in a segmented image with
+# a square aspect ratio
+def get_border_widths(max_border, min_x, max_x, min_y, max_y, b_box_c_x, b_box_c_y):
+
+    right_border_width = max_border - (max_x - b_box_c_x)
+    top_border_width = max_border - (b_box_c_y - min_y)
+    left_border_width = max_border - (b_box_c_x - min_x)
+    bottom_border_width = max_border - (max_y - b_box_c_y)
+    return right_border_width, top_border_width, left_border_width, bottom_border_width
+
+# Expand border of image so that segmented image is a square
+# (it has a 1:1 aspect ratio)
+def get_segmented_img(cropped_img, right_border_width, top_border_width, left_border_width, bottom_border_width):
+    segmented_img = cv.copyMakeBorder(src=cropped_img,
+                      top=top_border_width,
+                      bottom=bottom_border_width,
+                      right=right_border_width,
+                      left=left_border_width,
+                      borderType=cv.BORDER_CONSTANT,
+                      value=WHITE)
+
+    # Scale down image to 256x256
+    down_points = (256, 256)
+    downsized_img = cv.resize(src=segmented_img,
+                              dsize=down_points,
+                              interpolation=cv.INTER_LINEAR)
+    return downsized_img
+
+
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
-def smart_crop(img, dst_dir, isTest):
+def smart_crop(img, dst_dir, is_test_flag):
     true_contours = []  # An array of contours that are enclosing a piece (and not just glare)
-    max_border = 399 + 10
+    max_border = 399 + 10  # Value determined experimentally
     img_mask = clear_background(img)
-    img_mask_inv = cv.bitwise_not(img_mask)
+    img_mask_inv = cv.bitwise_not(img_mask)  # Create a mask of the background pixels
     contours = cv.findContours(image=img_mask_inv, mode=cv.RETR_EXTERNAL,
                                method=cv.CHAIN_APPROX_SIMPLE)[0]
     contours_descending_size = get_contours_sorted_by_descending_size(contours)
-    for i in range (len(contours_descending_size)):
-        file_name = i
+    i = 0
+    file_name = 0
+    while i < len(contours_descending_size):
         contour_index = contours_descending_size[i]
         contour = contours[contour_index]
         b_box_rect = cv.minAreaRect(contour)
@@ -174,12 +204,13 @@ def smart_crop(img, dst_dir, isTest):
         max_x, max_y = b_box_width, b_box_height
         area = b_box_width * b_box_height
 
-        # Expand border of image so that segmented image is a square
-        # (it has a 1:1 aspect ratio)
-        right_border_width = max_border - (max_x - b_box_c_x)
-        top_border_width = max_border - (b_box_c_y - min_y)
-        left_border_width = max_border - (b_box_c_x - min_x)
-        bottom_border_width = max_border - (max_y - b_box_c_y)
+        right_border_width, top_border_width, left_border_width, bottom_border_width = get_border_widths(max_border,
+                                                                                                         min_x,
+                                                                                                         max_x,
+                                                                                                         min_y,
+                                                                                                         max_y,
+                                                                                                         b_box_c_x,
+                                                                                                         b_box_c_y)
 
         if area < 21083:  # 380 x 90 (4x1 plate: smallest piece)
             break  # If the piece is so too small, skip the current contour and the rest
@@ -192,30 +223,21 @@ def smart_crop(img, dst_dir, isTest):
                 and area < 218625:  # 795 x 275 (1x8x2 arch: biggest piece)
             true_contours.append(contour)  # Only if these two conditions are satisfied
             # is the piece enclosed truly a contour
-            segmented_img = cv.copyMakeBorder(src=cropped_img,
-                                              top=top_border_width,
-                                              bottom=bottom_border_width,
-                                              right=right_border_width,
-                                              left=left_border_width,
-                                              borderType=cv.BORDER_CONSTANT,
-                                              value=WHITE)
-            # Remove background i.e. replace it with white
-            # segmented_img, _ = clear_background(segmented_img)
-            # colour of all background pixels to white
 
-            # Scale down images to 256x256
-            down_points = (256, 256)
-            downsized_img = cv.resize(src=segmented_img,
-                                      dsize=down_points,
-                                      interpolation=cv.INTER_LINEAR)
-            if isTest:
+            segmented_img = get_segmented_img(cropped_img,
+                                              right_border_width,
+                                              top_border_width,
+                                              left_border_width,
+                                              bottom_border_width)
+            if is_test_flag:
                 # Name using number
                 img_dst_dir = rf'{dst_dir}/{str(file_name)}.png'
             else:
                 # Name file depending on source filename
                 img_dst_dir = rf'{dst_dir}-{str(file_name)}.png'
-            cv.imwrite(img_dst_dir, downsized_img)
+            cv.imwrite(img_dst_dir, segmented_img)
         else:
             file_name -= 1
-
+        i += 1
+        file_name += 1
     return true_contours
