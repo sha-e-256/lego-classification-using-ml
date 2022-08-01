@@ -43,17 +43,30 @@ def main():
 
     # Draws text at the center of each box; used to display the prediction & probabilities
     def draw_text_with_outline(colour, img, center, text):
+        outline_thickness = 13
+        text_thickness = 3
+        font = cv.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.0
+        text_width, text_height = cv.getTextSize(text=text,
+                                                 fontFace=font,
+                                                 fontScale=font_scale,
+                                                 thickness=outline_thickness)[0]
+        c_x, c_y = center
+        text_min_x = c_x - text_width // 2
+        text_min_y = c_y + text_height // 2
         # Outline
         cv.putText(img=img, text=text,
-                   org=center,
-                   fontFace=cv.FONT_HERSHEY_SIMPLEX,
-                   fontScale=1, color=BLACK, thickness=13,
+                   org=(text_min_x, text_min_y),
+                   fontFace=font,
+                   fontScale=font_scale, color=WHITE,
+                   thickness=outline_thickness,
                    lineType=cv.LINE_AA)
         # Text
         cv.putText(img=img, text=text,
-                   org=center,
+                   org=(text_min_x, text_min_y),
                    fontFace=cv.FONT_HERSHEY_SIMPLEX,
-                   fontScale=1, color=WHITE, thickness=3,
+                   fontScale=font_scale, color=BLACK,
+                   thickness=text_thickness,
                    lineType=cv.LINE_AA)
 
     # Create a dictionary that contains information on the bounding box coordinates
@@ -67,7 +80,7 @@ def main():
         results = {}  # A dict containing the prediction, probability of prediction, coordinates
         # of the four corners of the bounding box of each piece,
         # and the center coordinates of each piece
-        unsegmented_img_src_dir = os.path.join(src_dir, '0.png')
+        unsegmented_img_src_dir = os.path.join(src_dir, '22.png')
         # Add exception, this image must exist
         unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
         # taken by the camera
@@ -107,8 +120,8 @@ def main():
 
         img_height = int(unsegmented_img_copy.shape[0])
         img_width = int(unsegmented_img.shape[1])
-        lcd_width = 1920
-        lcd_height = 1080
+        lcd_width = 1366
+        lcd_height = 768
         scale_factor = 2
         # Border must be positive; increase scale factor until its positive
         # This is just to prevent an exception from being thrown
@@ -128,7 +141,7 @@ def main():
                                                           right=right,
                                                           left=left,
                                                           borderType=cv.BORDER_CONSTANT,
-                                                          value=BLACK)
+                                                          value=WHITE)
 
             # Scale down images to 256x256
         for j in range(len(results)):
@@ -153,19 +166,17 @@ def main():
             # Draw contour of bounding box on unsegmented image in a random colour
             cv.drawContours(unsegmented_img_copy_w_border, [translated_segmented_img_b_box], 0, colour, 8)
 
-
-
             draw_text_with_outline(colour=colour,
                                    img=unsegmented_img_copy_w_border,
                                    text=segmented_img_label,
                                    center=(translated_segmented_img_b_box_c_x,
-                                           translated_segmented_img_b_box_c_y))
+                                           translated_segmented_img_b_box_c_y - 30))
 
             draw_text_with_outline(colour=colour,
                                    img=unsegmented_img_copy_w_border,
                                    text=segmented_img_probability,
                                    center=(translated_segmented_img_b_box_c_x,
-                                           translated_segmented_img_b_box_c_y + 60))
+                                           translated_segmented_img_b_box_c_y + 30))
 
         img_height = int(unsegmented_img_copy_w_border.shape[0])
         img_width = int(unsegmented_img_copy_w_border.shape[1])
@@ -182,10 +193,10 @@ def main():
         cv.waitKey()
         cv.destroyAllWindows()
 
-    dst_dir = rf'D:\lego-classification-using-ml\segmented-testing-images'
-    src_dir = rf'D:\lego-classification-using-ml\testing-images'
+    dst_dir = rf'E:\lego-classification-using-ml\segmented-testing-images'
+    src_dir = rf'E:\lego-classification-using-ml\testing-images'
     # subprocess.run(["D:\lego-classification-using-ml/livefeed.sh"])
-    model = tf.keras.models.load_model(rf'D:\lego-classification-using-ml\neural_net')
+    model = tf.keras.models.load_model(rf'E:\lego-classification-using-ml\neural_net')
     #subprocess.run(["D:\lego-classification-using-ml/take_pic.sh"])
     start_time = time.time()
 
