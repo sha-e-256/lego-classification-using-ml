@@ -80,7 +80,7 @@ def main():
         results = {}  # A dict containing the prediction, probability of prediction, coordinates
         # of the four corners of the bounding box of each piece,
         # and the center coordinates of each piece
-        unsegmented_img_src_dir = os.path.join(src_dir, '22.png')
+        unsegmented_img_src_dir = os.path.join(src_dir, '13.png')
         # Add exception, this image must exist
         unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
         # taken by the camera
@@ -193,10 +193,10 @@ def main():
         cv.waitKey()
         cv.destroyAllWindows()
 
-    dst_dir = rf'E:\lego-classification-using-ml\segmented-testing-images'
-    src_dir = rf'E:\lego-classification-using-ml\testing-images'
+    dst_dir = rf'D:\lego-classification-using-ml\segmented-testing-images'
+    src_dir = rf'D:\lego-classification-using-ml\testing-images'
     # subprocess.run(["D:\lego-classification-using-ml/livefeed.sh"])
-    model = tf.keras.models.load_model(rf'E:\lego-classification-using-ml\neural_net')
+    model = tf.keras.models.load_model(rf'D:\lego-classification-using-ml\neural_net')
     #subprocess.run(["D:\lego-classification-using-ml/take_pic.sh"])
     start_time = time.time()
 
