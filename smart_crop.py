@@ -6,7 +6,6 @@ import numpy as np
 
 WHITE = [255, 255, 255]  # OpenCV uses GBR
 BLACK = [0, 0, 0]
-true_contours = []  # An array of contours that are enclosing a piece (and not just glare)
 
 
 # Determine dynamic threshold using Otsu' thresholding method
@@ -156,16 +155,15 @@ def clear_background(img):
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
 def smart_crop(img, dst_dir, isTest):
+    true_contours = []  # An array of contours that are enclosing a piece (and not just glare)
     max_border = 399 + 10
-    true_contours.clear()
     img_mask = clear_background(img)
     img_mask_inv = cv.bitwise_not(img_mask)
     contours = cv.findContours(image=img_mask_inv, mode=cv.RETR_EXTERNAL,
                                method=cv.CHAIN_APPROX_SIMPLE)[0]
     contours_descending_size = get_contours_sorted_by_descending_size(contours)
-    i = 0
-    file_name = 0
-    while i < len(contours_descending_size):
+    for i in range (len(contours_descending_size)):
+        file_name = i
         contour_index = contours_descending_size[i]
         contour = contours[contour_index]
         b_box_rect = cv.minAreaRect(contour)
@@ -184,7 +182,6 @@ def smart_crop(img, dst_dir, isTest):
         bottom_border_width = max_border - (max_y - b_box_c_y)
 
         if area < 21083:  # 380 x 90 (4x1 plate: smallest piece)
-            # print(f'too small:{(b_box_width, b_box_height)}')
             break  # If the piece is so too small, skip the current contour and the rest
         # If there is a negative border, the piece its enclosing is a bunch of touching pieces
         # so break the loop and move on to the next piece
@@ -193,8 +190,6 @@ def smart_crop(img, dst_dir, isTest):
                 and left_border_width > 0 \
                 and bottom_border_width > 0 \
                 and area < 218625:  # 795 x 275 (1x8x2 arch: biggest piece)
-            # print(file_name)
-            # print(f'just right:{(b_box_width, b_box_height)}')
             true_contours.append(contour)  # Only if these two conditions are satisfied
             # is the piece enclosed truly a contour
             segmented_img = cv.copyMakeBorder(src=cropped_img,
@@ -221,9 +216,6 @@ def smart_crop(img, dst_dir, isTest):
                 img_dst_dir = rf'{dst_dir}-{str(file_name)}.png'
             cv.imwrite(img_dst_dir, downsized_img)
         else:
-            # print(f'too big:{(b_box_width, b_box_height)}')
             file_name -= 1
 
-        i += 1
-        file_name += 1
-        # print('looping back...')
+    return true_contours
