@@ -35,9 +35,23 @@ get_contours_sorted_by_descending_size(contours):
     Returns a list of the index of the contours in the initial unsorted tuple of contours
     after they have been sorted in descending bounding box size. 
 
-rotate_and_crop_image(img, b_box_rect):
+get_rotated_and_cropped_image(img, b_box_rect):
      Rotates the input image so that the piece of interest is upright and then crops the piece of
      interest out of the rotated image and returns the cropped image. 
+
+clear_background(img):
+    Sets the background pixels of the image to white using HSV thresholding.
+    
+get_border_widths(max_border, b_box_max_corner_vals, b_box_c_x, b_box_c_y):
+    Returns the widths of the borders needed to expand the borders of the cropped image
+    so that it has a square aspect ratio.
+
+get_segmented_img(img, border_widths):
+    Returns the cropped image after it has been scaled to the largest piece and resized to be 256 x 256.
+
+get_segmented_imgs(img, max_border, dst_dir, is_test_img):
+    Saves a segmented image of each piece in an unsegmented image to file; Returns a list of contours of each
+    piece in the unsegmented image.
 """
 
 
@@ -183,8 +197,7 @@ def get_contours_sorted_by_descending_size(contours: tuple[np.ndarray, ...]) -> 
     return contours_descending_size
 
 
-
-def rotate_and_crop_img(img: np.ndarray,
+def get_rotated_and_cropped_img(img: np.ndarray,
                         b_box_rect: tuple[tuple[float, float], tuple[float, float], float]) -> np.ndarray:
     """
     Rotates the input image so that the piece of interest is upright, and then crops the piece of
@@ -275,11 +288,11 @@ def clear_background(img: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 def get_border_widths(max_border: int,
-                      b_box_corner_coords: tuple[int, int, int, int],
+                      b_box_max_corner_vals: tuple[int, int, int, int],
                       b_box_c_x: int,
                       b_box_c_y: int) -> tuple[int, int, int, int]:
     """
-    Returns the widths of the borders needed to expand the borders of the cropped_img
+    Returns the widths of the borders needed to expand the borders of the cropped image
     so that it has a square aspect ratio.
 
     Parameters
@@ -299,7 +312,7 @@ def get_border_widths(max_border: int,
     img_mask: np.ndarray
         A mask where the background pixels are black and the foreground pixels are white.
     """
-    min_x, min_y, max_x, max_y = b_box_corner_coords
+    min_x, min_y, max_x, max_y = b_box_max_corner_vals
     right_border = max_border - (max_x - b_box_c_x)
     top_border = max_border - (b_box_c_y - min_y)
     left_border = max_border - (b_box_c_x - min_x)
@@ -307,14 +320,30 @@ def get_border_widths(max_border: int,
     return right_border, top_border, left_border, bottom_border
 
 
-# Expand border of image so that segmented image is a square
-# (it has a 1:1 aspect ratio)
-def get_segmented_img(cropped_img, right_border_width, top_border_width, left_border_width, bottom_border_width):
+def get_segmented_img(cropped_img: np.ndarray,
+                      border_widths: tuple[int, int, int, int]) -> np.ndarray:
+    """
+    Returns the cropped image after it has been scaled to the largest piece and resized to be 256 x 256.
+
+    Parameters
+    ----------
+    cropped_img: np.ndarray
+        A numpy array of the image after the piece has been cropped out of the initial image.
+    border_widths: tuple[int, int, int, int]
+        The minimum x, minimum y, maximum x, and maximum y value of
+        the coordinates of the corners of the bounding box respectively.
+
+    Returns
+    -------
+    segmented_img: np.ndarray
+        A numpy array of the image after it has been scaled to the largest piece and resized to be 256 x 256.
+    """
+    right_border, top_border, left_border, bottom_border = border_widths
     segmented_img = cv.copyMakeBorder(src=cropped_img,
-                                      top=top_border_width,
-                                      bottom=bottom_border_width,
-                                      right=right_border_width,
-                                      left=left_border_width,
+                                      top=top_border,
+                                      bottom=bottom_border,
+                                      right=right_border,
+                                      left=left_border,
                                       borderType=cv.BORDER_CONSTANT,
                                       value=WHITE)
 
@@ -326,55 +355,76 @@ def get_segmented_img(cropped_img, right_border_width, top_border_width, left_bo
     return downsized_img
 
 
-# Segment an image into 1 more sub-image, where each
-# image contains a Lego piece
-def segment_img(img, dst_dir, is_test_flag):
-    true_contours = []  # A list of contours that are actually enclosing a piece (and not just glare)
-    max_border = 399 + 10  # Value determined experimentally
-    img, img_mask = clear_background(img)
+def get_segmented_imgs(img : np.ndarray,
+                max_border: int,
+                dst_dir: str,
+                is_test_flag: bool) -> list:
+    """
+    Saves a segmented image of each piece in an unsegmented image to file; Returns a list of contours of each
+    piece in the unsegmented image.
+
+    Parameters
+    ----------
+    img: np.ndarray
+        A numpy array of the unsegmented image.
+    max_border: int
+        The border width of the largest piece.
+    dst_dir: str
+        The directory where the segmented images will be saved.
+    is_test_flag: bool
+        A flag used to determine if the input image is a training image or a testing image; if it is a training image,
+        then name the processed image according to the name of the source image; otherwise, name it using a number in
+        chronological order.
+
+    Returns
+    -------
+    true_contours: list
+        A list of all the contours that are enclosing a piece. 
+    """
+    true_contours = []  # A list of the contours that are actually enclosing a piece
+                        # Sometimes; a bounding box is generated for glare; ignore these
+    img, img_mask = clear_background(img)   # Change the background to white
     contours = cv.findContours(image=img_mask, mode=cv.RETR_EXTERNAL,
                                method=cv.CHAIN_APPROX_SIMPLE)[0]
-    contours_descending_size = get_contours_sorted_by_descending_size(contours)
-    i = 0
+    contours_descending_size = get_contours_sorted_by_descending_size(contours)  # Sort the contour indices in order of
+                                                                                 # descending size
     file_name = 0
-    while i < len(contours_descending_size):
-        contour_index = contours_descending_size[i]
+    for contour_index in contours_descending_size:
         contour = contours[contour_index]
         b_box_rect = cv.minAreaRect(contour)
-        cropped_img = rotate_and_crop_img(img, b_box_rect)
+        cropped_img = get_rotated_and_cropped_img(img, b_box_rect)  # Crop the piece out of the image (no bg)
         b_box_c_x, b_box_c_y = get_img_center(cropped_img)
         b_box_width, b_box_height = get_bounding_box_size(b_box_rect)
         area = b_box_width * b_box_height
-        b_box_corner_coords = (0, 0, b_box_width, b_box_height)
-
+        b_box_max_corner_vals = (0, 0, b_box_width, b_box_height)  # The coordinates of the corners of the bounding box
         right_border, top_border, left_border, bottom_border = get_border_widths(max_border,
-                                                                                 b_box_corner_coords,
+                                                                                 b_box_max_corner_vals,
                                                                                  b_box_c_x,
                                                                                  b_box_c_y)
 
         if area < 21083:  # 21083 = 380 x 90 (4x1 plate: smallest piece)
-            break  # If the piece is so too small, skip the current contour and the rest
+            break  # If the piece is so too small, skip the current contour and the rest of the contours
+
         # If there is a negative border, the piece its enclosing is a bunch of touching pieces
         # so break the loop and move on to the next piece
         if right_border > 0 and top_border > 0 and left_border > 0 and bottom_border > 0 and area < 218625:
             # 218625 = 795 x 275 (1x8x2 arch: biggest piece)
             true_contours.append(contour)  # Only if these two conditions are satisfied
-            # is the piece enclosed truly a contour
+                                           # is the piece enclosed truly a contour
 
+            # Increase the border of the image so that all images have a square aspect ratio
+            border_widths = right_border, top_border, left_border, bottom_border
             segmented_img = get_segmented_img(cropped_img,
-                                              right_border,
-                                              top_border,
-                                              left_border,
-                                              bottom_border)
+                                              border_widths)
             if is_test_flag:
-                # Name using number
+                # Name using number (0, 1, 2...)
                 img_dst_dir = rf'{dst_dir}/{str(file_name)}.png'
             else:
                 # Name file depending on source filename
                 img_dst_dir = rf'{dst_dir}-{str(file_name)}.png'
             cv.imwrite(img_dst_dir, segmented_img)
-        else:
-            file_name -= 1
-        i += 1
+        else:  # If the area of the bounding box is too big, it's enclosing several pieces, so skip
+            file_name -= 1  # Since a piece was skipped, reduce the contour so that the saved images are numbered
+                            # chronologically
         file_name += 1
     return true_contours
