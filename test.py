@@ -8,6 +8,7 @@ import tensorflow as tf
 import math
 from tensorflow import keras
 import subprocess
+import typing
 
 """
 A module that is used to perform the demonstration. This module takes an image using the Raspberry Pi camera,
@@ -37,13 +38,29 @@ BLACK = [0, 0, 0]
 WHITE = [255, 255, 255]
 
 
-def get_prediction_and_probability(img, model):
+def get_prediction_and_probability(img: np.ndarray,
+                                   model) -> tuple[np.str, np.float]:
+    """
+        Returns the name of the predicted piece and the probability of that prediction
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Numpy array of the segmented image.
+        model:  keras.engine.sequential.Sequential
+            Model used to generated predictions.
+
+        Returns
+        -------
+        predicted_name, probability: tuple[np.str, np.float]
+            The predicted name of the piece and the probability of that prediction, respectively.
+        """
     probability_array = model.predict(img)[0]  # 1 x 8 array of the predictions
     max_probability = np.max(probability_array)
     piece_names = np.array(["Plate 4 x 4 Corner", "Brick 1 x 6", "Plate 2 x 3", "Plate 2 x 8",
                    "Brick Arch 1 x 8 x 2", "Plate 1 x 6", "Plate 1 x 4", "Wedge Plate 4 x 2"])
-    piece_name = piece_names[probability_array == max_probability]
-    return piece_name[0], max_probability
+    predicted_name = piece_names[probability_array == max_probability][0]
+    return predicted_name, max_probability
 
 # Draws text at the center of each box; used to display the prediction & probabilities
 def draw_text_with_outline(colour, img, center, text):
@@ -73,60 +90,31 @@ def draw_text_with_outline(colour, img, center, text):
                thickness=text_thickness,
                lineType=cv.LINE_AA)
 
-
-# Create a dictionary that contains information on the bounding box coordinates
-# and the model prediction & probabilities of each Lego piece so that this information
-# can be drawn on the unsegmented image taken by the camera
-def run_test(src_dir, dst_dir, model):
-    max_border = 399 + 10  # Value determined experimentally
-
+def clear_dir(dst_dir):
     for file_name in os.listdir(dst_dir):
-        os.remove(os.path.join(dst_dir, file_name))  # Clear the directory containing segmented testing images
-    results = {}  # A dict containing the prediction, probability of prediction, coordinates
-    # of the four corners of the bounding box of each piece,
-    # and the center coordinates of each piece
-    unsegmented_img_src_dir = os.path.join(src_dir, '14.png')
-    # Add exception, this image must exist
-    unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
-    # cv.imwrite(rf'E:\InterSummer 2022\ELEC-4000 Capstone\Final Report\report\0.png', unsegmented_img)
+        os.remove(os.path.join(dst_dir, file_name))
 
-    # taken by the camera
-    unsegmented_img_copy = unsegmented_img.copy()
 
-    true_contours = sc.get_segmented_imgs(unsegmented_img, max_border, dst_dir, is_test_flag=True)  # Generate segmented images
+def update_dictionary(results, i, prediction, probability, segmented_img_b_box, segmented_img_b_box_center):
+    results[i] = {}
+    results[i]['label'] = prediction
+    results[i]['probability'] = probability
+    results[i]['bounding_box'] = segmented_img_b_box
+    (segmented_img_b_box_c_x, segmented_img_b_box_c_y) = segmented_img_b_box_center
+    results[i]['c_x'] = segmented_img_b_box_c_x
+    results[i]['c_y'] = segmented_img_b_box_c_y
+    return results
 
-    # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented_img
-    segmented_img_names = sorted(os.listdir(dst_dir))
-    for i in range(len(segmented_img_names)):
-        file_name = str(i) + '.png'
+def normalize_img(img_dir):
+    segmented_img = cv.imread(img_dir, cv.IMREAD_GRAYSCALE)  # NumPy array of the segmented image
+    segmented_img = np.array(segmented_img).reshape(-1, 256, 256, 1)
+    segmented_img = segmented_img / 255.0
+    return segmented_img
 
-        segmented_img_src_dir = os.path.join(dst_dir, file_name)  # Path of the segmented image
-        segmented_img = cv.imread(segmented_img_src_dir, cv.IMREAD_GRAYSCALE)  # NumPy array of the segmented image
+def add_border(img, lcd_width, lcd_height, scale_factor):
+    img_height = int(img.shape[0])
+    img_width = int(img.shape[1])
 
-        segmented_img = np.array(segmented_img).reshape(-1, 256, 256, 1)
-        segmented_img = segmented_img / 255.0
-
-        # segmented_img: input to the model
-
-        prediction, probability = get_prediction_and_probability(segmented_img, model)
-
-        # Once prediction has been determined, update the dictionary
-        segmented_img_rect = cv.minAreaRect(true_contours[i])
-        (segmented_img_b_box_c_x, segmented_img_b_box_c_y) = sc.get_bounding_box_center(segmented_img_rect)
-        segmented_img_b_box = np.int0(cv.boxPoints(segmented_img_rect))  # Coordinates of the four corners
-
-        results[i] = {}
-        results[i]['label'] = prediction
-        results[i]['probability'] = probability
-        results[i]['bounding_box'] = segmented_img_b_box
-        results[i]['c_x'] = segmented_img_b_box_c_x
-        results[i]['c_y'] = segmented_img_b_box_c_y
-
-    img_height = int(unsegmented_img_copy.shape[0])
-    img_width = int(unsegmented_img.shape[1])
-    lcd_width = 1366
-    lcd_height = 768
-    scale_factor = 2
     # Border must be positive; increase scale factor until its positive
     # This is just to prevent an exception from being thrown
     while True:
@@ -139,15 +127,18 @@ def run_test(src_dir, dst_dir, model):
         else:
             break
 
-    unsegmented_img_copy_w_border = cv.copyMakeBorder(src=unsegmented_img_copy,
-                                                      top=top,
-                                                      bottom=bottom,
-                                                      right=right,
-                                                      left=left,
-                                                      borderType=cv.BORDER_CONSTANT,
-                                                      value=WHITE)
+    unsegmented_img_w_border = cv.copyMakeBorder(src=img,
+                                                 top=top,
+                                                 bottom=bottom,
+                                                 right=right,
+                                                 left=left,
+                                                 borderType=cv.BORDER_CONSTANT,
+                                                 value=WHITE)
+    border = top, bottom, right, left
+    return unsegmented_img_w_border, border, scale_factor
 
-    # Scale down images to 256x256
+def draw_on_unsegmented_img(unsegmented_img_w_border, right_border, top_border, results):
+
     for j in range(len(results)):
         segmented_img_b_box = results[j]['bounding_box']
         segmented_img_b_box_c_x = results[j]['c_x']
@@ -157,40 +148,77 @@ def run_test(src_dir, dst_dir, model):
         # Adding a border causes the bounding boxes to be in the incorrect position
         # Therefore they need to be translated to the correct position by adding the offset
         # generated by the border
-        translated_segmented_img_b_box_c_x = segmented_img_b_box_c_x + right  # right = left
-        translated_segmented_img_b_box_c_y = segmented_img_b_box_c_y + top  # top = bottom
+        translated_segmented_img_b_box_c_x = segmented_img_b_box_c_x + right_border  # right = left
+        translated_segmented_img_b_box_c_y = segmented_img_b_box_c_y + top_border  # top = bottom
         translated_segmented_img_b_box = segmented_img_b_box.copy()
         for k in range(4):
-            translated_segmented_img_b_box[k] = translated_segmented_img_b_box[k] + (right, top)
+            translated_segmented_img_b_box[k] = translated_segmented_img_b_box[k] + (right_border, top_border)
 
         color_vals = [0, 256]
         colour = (color_vals[random.randint(0, 1)],
                   color_vals[random.randint(0, 1)],
                   color_vals[random.randint(0, 1)])
         # Draw contour of bounding box on unsegmented image in a random colour
-        cv.drawContours(unsegmented_img_copy_w_border, [translated_segmented_img_b_box], 0, colour, 8)
+        cv.drawContours(unsegmented_img_w_border, [translated_segmented_img_b_box], 0, colour, 8)
 
         draw_text_with_outline(colour=colour,
-                               img=unsegmented_img_copy_w_border,
+                               img=unsegmented_img_w_border,
                                text=segmented_img_label,
                                center=(translated_segmented_img_b_box_c_x,
                                        translated_segmented_img_b_box_c_y - 30))
 
         draw_text_with_outline(colour=colour,
-                               img=unsegmented_img_copy_w_border,
+                               img=unsegmented_img_w_border,
                                text=segmented_img_probability,
                                center=(translated_segmented_img_b_box_c_x,
                                        translated_segmented_img_b_box_c_y + 30))
+    return unsegmented_img_w_border
 
-    img_height = int(unsegmented_img_copy_w_border.shape[0])
-    img_width = int(unsegmented_img_copy_w_border.shape[1])
+def run_test(src_dir, dst_dir, model):
+    max_border = 399 + 10  # Value determined experimentally
+    clear_dir(dst_dir)  # Clear the directory containing segmented testing images
+    results = {}  # A dict containing the prediction, probability of prediction, coordinates
+    # of the four corners of the bounding box of each piece,
+    # and the center coordinates of each piece
+
+    unsegmented_img_src_dir = os.path.join(src_dir, '21.png')
+    unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
+                                                          # taken by the camera
+    # Generate segmented images
+    # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented_img
+    true_contours = sc.get_segmented_imgs(unsegmented_img, max_border, dst_dir, is_test_flag=True)
+
+    segmented_img_names = sorted(os.listdir(dst_dir))
+    for i in range(len(segmented_img_names)):
+        file_name = str(i) + '.png'
+
+        segmented_img_src_dir = os.path.join(dst_dir, file_name)  # Path of the segmented image
+        segmented_img = normalize_img(img_dir=segmented_img_src_dir)
+        prediction, probability = get_prediction_and_probability(segmented_img, model)
+
+        # Once a prediction has been determined, update the dictionary
+        segmented_img_rect = cv.minAreaRect(true_contours[i])
+        (segmented_img_b_box_center) = sc.get_bounding_box_center(segmented_img_rect)
+        segmented_img_b_box = np.int0(cv.boxPoints(segmented_img_rect))  # Coordinates of the four corners
+
+        results = update_dictionary(results, i, prediction, probability,
+                                    segmented_img_b_box,
+                                    segmented_img_b_box_center)
+
+        unsegmented_img_w_border, border, scale_factor = add_border(img=unsegmented_img, lcd_width=1366, lcd_height=768, scale_factor=2)
+        top_border, bottom_border, left_border, right_border = border
+
+    unsegmented_img_w_border = draw_on_unsegmented_img(unsegmented_img_w_border=unsegmented_img_w_border,
+                                                       right_border=right_border,
+                                                       top_border=top_border,
+                                                       results=results)
+    img_height = int(unsegmented_img_w_border.shape[0])
+    img_width = int(unsegmented_img_w_border.shape[1])
     # Resize image so it fits on the monitor
     down_points = (img_width // scale_factor, img_height // scale_factor)
-    print(f'display resolution: {down_points}')
-    unsegmented_img_downsized = cv.resize(src=unsegmented_img_copy_w_border,
+    unsegmented_img_downsized = cv.resize(src=unsegmented_img_w_border,
                                           dsize=down_points,
                                           interpolation=cv.INTER_LINEAR)
-    cv.imwrite(rf'E:\InterSummer 2022\ELEC-4000 Capstone\Final Report\report\2.png', unsegmented_img_copy_w_border)
 
     # Display image with bounding box information
     window_name = "unsegmented img with bounding boxes"
