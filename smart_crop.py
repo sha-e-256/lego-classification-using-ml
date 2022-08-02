@@ -1,29 +1,78 @@
 import cv2 as cv
 import numpy as np
+import typing  # For type hinting
 
-# The purpose of the smart_crop module is to provide functions that can be used to
-# pre-process both training and testing
+"""
+A module to pre-process testing and training images.
 
-WHITE = [255, 255, 255]  # OpenCV uses GBR
+Methods
+-------
+get_bounding_box_size(b_box_rect):
+    Returns the width and length of a bounding box.
+    
+get_bounding_box_center(b_box_rect):
+    Returns the coordinates of the center of a bounding box.
+
+get_bounding_box_corners(b_box):]
+    Returns the coordinates of the four corners of a bounding box.
+
+
+"""
+
+WHITE = [255, 255, 255]  # GBR colours
 BLACK = [0, 0, 0]
 
-# Return width and height of a bounding box
-def get_bounding_box_size(b_box_rect):
+
+def get_bounding_box_size(b_box_rect: tuple[tuple, tuple, float]) -> tuple[int, int]:
+    """
+    Returns the width and length of the bounding box.
+
+    Parameters
+    ----------
+    b_box_rect : tuple[tuple, tuple, float]
+        Bounding box enclosed by a contour.
+
+    Returns
+    -------
+    b_box_width, b_box_height: tuple[int, int]
+    """
     b_box_width = int(b_box_rect[1][0])  # Rows (width)
     b_box_height = int(b_box_rect[1][1])  # Cols (height)
     return b_box_width, b_box_height
 
 
-# Return the coordinates of the center of the bounding box
-def get_bounding_box_center(b_box_rect):
-    b_box_c_x = int(b_box_rect[0][0])  # Coordinates of the center of
-    b_box_c_y = int(b_box_rect[0][1])  # the bounding box
+def get_bounding_box_center(b_box_rect: tuple[tuple, tuple, float]) -> tuple[int, int]:
+    """
+     Returns the coordinates of the center of the bounding box.
+
+     Parameters
+     ----------
+     b_box_rect : tuple[tuple, tuple, float]
+         Bounding box enclosed by a contour.
+
+     Returns
+     -------
+     b_box_c_x, b_box_c_y: tuple[int, int]
+     """
+    b_box_c_x = int(b_box_rect[0][0])
+    b_box_c_y = int(b_box_rect[0][1])
     return b_box_c_x, b_box_c_y
 
 
-# Return coordinates of the four corners of the bounding box
-def get_bounding_box_points(np_array_b_box):
-    points = np.int0(np_array_b_box)[0]  # Array of points of the four corners of the bounding box
+def get_bounding_box_corners(b_box: np.ndarray) -> tuple[int, int, int, int]:
+    """
+     Returns the coordinates of the four corners of the bounding box.
+
+     Parameters
+     ----------
+     b_box : tuple[tuple, tuple, float]
+         A numpy array of each point making up the bounding box enclosed by a contour.
+
+     Returns
+     -------
+     min_x, min_y, max_x, max_y: tuple[int, int]
+     """
+    points = np.int0(b_box)[0]  # Array of points of the four corners of the bounding box
     points[points < 0] = 0  # Set negative points to be equal to zero
     min_x = points[1][1]
     max_x = points[0][1]
@@ -85,6 +134,7 @@ def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
 # and increase the width and height of the image so that
 # the corners of the image do not get cut off after rotation
 def rotate_and_crop_img(img, contour):
+    img, img_mask = clear_background(img)
     img_width, img_height = get_img_size(img)
     img_center_x, img_center_y = get_img_center(img)
     b_box_rect = cv.minAreaRect(contour)
@@ -108,49 +158,51 @@ def rotate_and_crop_img(img, contour):
     # Rotate/translate the image using the rotation matrix
     rotated_img = cv.warpAffine(src=img, M=rotation_matrix,
                                 dsize=(rotated_img_width, rotated_img_height),
-                                borderMode=cv.BORDER_CONSTANT, borderValue=WHITE)
+                                borderMode=cv.BORDER_CONSTANT, borderValue=BLACK)
 
     b_box = cv.boxPoints(b_box_rect)
     # Rotate/translate bounding box using the rotation matrix
     rotated_b_box = cv.transform(np.array([b_box]), rotation_matrix)
-    min_x, max_x, min_y, max_y = get_bounding_box_points(rotated_b_box)
+    min_x, max_x, min_y, max_y = get_bounding_box_corners(rotated_b_box)
     cropped_img = rotated_img[min_x:max_x, min_y:max_y]
+
     return cropped_img
 
 
 # Set background colour to white
 def clear_background(img):
-    dark_colour = np.array([255, 70, 255])  # HSV for all
+    dark_colour = np.array([179, 70, 255])  # HSV for all
     light_colour = np.array([0, 0, 0])  # washed out colours
     img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
     img_mask = cv.inRange(src=img_hsv,
                           lowerb=light_colour,
                           upperb=dark_colour)
+    img_mask = cv.bitwise_not(img_mask)  # Create a mask of the background pixels
 
-    img[img_mask == 255] = WHITE
-    return img_mask
+    img[img_mask == 0] = WHITE
+    return img, img_mask
 
 
 # Find border of image that results in a segmented image with
 # a square aspect ratio
 def get_border_widths(max_border, min_x, max_x, min_y, max_y, b_box_c_x, b_box_c_y):
-
     right_border_width = max_border - (max_x - b_box_c_x)
     top_border_width = max_border - (b_box_c_y - min_y)
     left_border_width = max_border - (b_box_c_x - min_x)
     bottom_border_width = max_border - (max_y - b_box_c_y)
     return right_border_width, top_border_width, left_border_width, bottom_border_width
 
+
 # Expand border of image so that segmented image is a square
 # (it has a 1:1 aspect ratio)
 def get_segmented_img(cropped_img, right_border_width, top_border_width, left_border_width, bottom_border_width):
     segmented_img = cv.copyMakeBorder(src=cropped_img,
-                      top=top_border_width,
-                      bottom=bottom_border_width,
-                      right=right_border_width,
-                      left=left_border_width,
-                      borderType=cv.BORDER_CONSTANT,
-                      value=WHITE)
+                                      top=top_border_width,
+                                      bottom=bottom_border_width,
+                                      right=right_border_width,
+                                      left=left_border_width,
+                                      borderType=cv.BORDER_CONSTANT,
+                                      value=WHITE)
 
     # Scale down image to 256x256
     down_points = (256, 256)
@@ -162,12 +214,16 @@ def get_segmented_img(cropped_img, right_border_width, top_border_width, left_bo
 
 # Segment an image into 1 more sub-image, where each
 # image contains a Lego piece
-def smart_crop(img, dst_dir, is_test_flag):
+def segment_img(img, dst_dir, is_test_flag):
     true_contours = []  # An array of contours that are enclosing a piece (and not just glare)
     max_border = 399 + 10  # Value determined experimentally
-    img_mask = clear_background(img)
-    img_mask_inv = cv.bitwise_not(img_mask)  # Create a mask of the background pixels
-    contours = cv.findContours(image=img_mask_inv, mode=cv.RETR_EXTERNAL,
+    cv.imwrite(rf'E:\InterSummer 2022\ELEC-4000 Capstone\Final Report\report\0.png', img)
+
+    img, img_mask = clear_background(img)
+    cv.imwrite(rf'E:\InterSummer 2022\ELEC-4000 Capstone\Final Report\report\2.png', img)
+    cv.imwrite(rf'E:\InterSummer 2022\ELEC-4000 Capstone\Final Report\report\1.png', img_mask)
+
+    contours = cv.findContours(image=img_mask, mode=cv.RETR_EXTERNAL,
                                method=cv.CHAIN_APPROX_SIMPLE)[0]
     contours_descending_size = get_contours_sorted_by_descending_size(contours)
     i = 0
