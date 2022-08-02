@@ -3,21 +3,41 @@ import numpy as np
 import typing  # For type hinting
 
 """
-A module to pre-process testing and training images.
+A module that is used to pre-process testing and training images.
+
+Attributes
+----------
+WHITE: list
+    White colour in GBR colour model.
+BLACK: list
+    Black colour in GBR colour model. 
+
 
 Methods
 -------
 get_bounding_box_size(b_box_rect):
-    Returns the width and length of a bounding box.
+    Returns the width and height of a bounding box.
     
 get_bounding_box_center(b_box_rect):
     Returns the coordinates of the center of a bounding box.
 
 get_bounding_box_corners(b_box):]
-    Returns the coordinates of the four corners of a bounding box.
+    Returns the minimum x, minimum y, maximum x, and maximum y value of
+    the bounding box's coordinates.
+    
+get_img_size(img):
+    Returns the width and height of an image.
+
+get_img_center(img):
+    Returns the coordinates of the center of an image. 
+    
+get_contours_sorted_by_descending_size(contours):
+    Returns a list of the index of the contours in the initial unsorted tuple of contours
+    after they have been sorted in descending bounding box size. 
 
 
 """
+
 
 WHITE = [255, 255, 255]  # GBR colours
 BLACK = [0, 0, 0]
@@ -25,7 +45,7 @@ BLACK = [0, 0, 0]
 
 def get_bounding_box_size(b_box_rect: tuple[tuple, tuple, float]) -> tuple[int, int]:
     """
-    Returns the width and length of the bounding box.
+    Returns the width and height of the bounding box.
 
     Parameters
     ----------
@@ -35,9 +55,10 @@ def get_bounding_box_size(b_box_rect: tuple[tuple, tuple, float]) -> tuple[int, 
     Returns
     -------
     b_box_width, b_box_height: tuple[int, int]
+        The width and height of the bounding box, respectively.
     """
-    b_box_width = int(b_box_rect[1][0])  # Rows (width)
-    b_box_height = int(b_box_rect[1][1])  # Cols (height)
+    b_box_width = int(b_box_rect[1][0])  # Cols (width)
+    b_box_height = int(b_box_rect[1][1])  # Rows (height)
     return b_box_width, b_box_height
 
 
@@ -53,6 +74,7 @@ def get_bounding_box_center(b_box_rect: tuple[tuple, tuple, float]) -> tuple[int
      Returns
      -------
      b_box_c_x, b_box_c_y: tuple[int, int]
+        The x-coordinate and y-coordinate of the center of the bounding box, respectively.
      """
     b_box_c_x = int(b_box_rect[0][0])
     b_box_c_y = int(b_box_rect[0][1])
@@ -61,7 +83,8 @@ def get_bounding_box_center(b_box_rect: tuple[tuple, tuple, float]) -> tuple[int
 
 def get_bounding_box_corners(b_box: np.ndarray) -> tuple[int, int, int, int]:
     """
-     Returns the coordinates of the four corners of the bounding box.
+     Returns the minimum x, minimum y, maximum x, and maximum y value of
+     the bounding box's coordinates.
 
      Parameters
      ----------
@@ -71,63 +94,91 @@ def get_bounding_box_corners(b_box: np.ndarray) -> tuple[int, int, int, int]:
      Returns
      -------
      min_x, min_y, max_x, max_y: tuple[int, int]
+        Returns the minimum x, minimum y, maximum x, and maximum y value of
+        the bounding box's coordinates, respectively.
      """
-    points = np.int0(b_box)[0]  # Array of points of the four corners of the bounding box
-    points[points < 0] = 0  # Set negative points to be equal to zero
-    min_x = points[1][1]
-    max_x = points[0][1]
-    min_y = points[1][0]
-    max_y = points[2][0]
+    corner_coords = np.int0(b_box)[0]  # Array of coordinates of the four corners of the bounding box
+    corner_coords[corner_coords < 0] = 0  # Set negative points to be equal to zero
+    min_x = corner_coords[1][1]
+    max_x = corner_coords[0][1]
+    min_y = corner_coords[1][0]
+    max_y = corner_coords[2][0]
     return min_x, max_x, min_y, max_y
 
 
-# Return width and height of an image
-def get_img_size(img):
-    img_height = int(img.shape[0])  # Rows
-    img_width = int(img.shape[1])  # Cols
+def get_img_size(img: np.ndarray) -> tuple[int, int]:
+    """
+     Returns the width and height of an image.
+
+     Parameters
+     ----------
+     img : np.ndarray
+         A numpy array of the image.
+
+     Returns
+     -------
+     img_width, img_height: tuple[int, int]
+        Returns the width and height of an image, respectively.
+     """
+    img_height = int(img.shape[0])  # Rows (height)
+    img_width = int(img.shape[1])  # Cols (width)
     return img_width, img_height
 
 
-# Return center coordinates of img
-def get_img_center(img):
+def get_img_center(img: np.ndarray) -> tuple[int, int]:
+    """
+     Returns the coordinates of the center of the image.
+
+     Parameters
+     ----------
+     img : np.ndarray
+         A numpy array of the image.
+
+     Returns
+     -------
+     img_c_x, img_c_y: tuple[int, int]
+        The x-coordinate and y-coordinate of the center of the image, respectively.
+     """
     img_width, img_height = get_img_size(img)
-    img_center_x = img_width // 2
-    img_center_y = img_height // 2
-    return img_center_x, img_center_y
+    img_c_x = img_width // 2  # // is Integer division
+    img_c_y = img_height // 2
+    return img_c_x, img_c_y
 
 
-# Sorts the contours based off of the size of the minimum bounding box enclosed by the contour
-# And returns an array of the index of the contours in order of descending bounding box size
-def get_contours_sorted_by_descending_size(contours):
-    b_boxes = []
+def get_contours_sorted_by_descending_size(contours: tuple[np.ndarray, ...]) -> list:
+    """
+    Returns a list of the index of the contours in the initial unsorted tuple of contours
+    after they have been sorted in descending bounding box size.
+
+    Parameters
+    ----------
+    contours: tuple[np.ndarray, ...]
+        A tuple of numpy arrays, where each array is an array of points making up the contour.
+
+    Returns
+    -------
+    contours_descending_size: list
+        A list of the index of the contours in the initial unsorted tuple of contours
+        after they have been sorted in descending bounding box size.
+    """
+    b_box_areas = []
     for contour in contours:
         b_box_rect = cv.minAreaRect(contour)
         (b_box_width, b_box_height) = get_bounding_box_size(b_box_rect)
         area = b_box_width * b_box_height
-        b_boxes.append(area)
-    sorted_b_boxes = sorted(list(enumerate(b_boxes)), key=lambda x: x[1], reverse=True)
-    # The lambda function allows for the list
+        b_box_areas.append(area)
+    sorted_b_boxes = sorted(list(enumerate(b_boxes)),
+                            key=lambda x: x[1],
+                            reverse=True)
+    # The lambda function allows for the sorted_b_boxes list
     # to be sorted by the size of the bounding box
     # while maintaining the index
-    # of the contour in the initial unsorted list
-    # for box in sorted_b_boxes:
-    #     print(box)
-    contours_descending_size = []
+    # of the contour in the initial unsorted tuple
+
+    contours_descending_size = []  # A list of the index of the contours in the initial list
     for i in range(len(sorted_b_boxes)):
-        contours_descending_size.append(sorted_b_boxes[i][0])
+        contours_descending_size.append(sorted_b_boxes[i][0])  # Only need to grab the index, not the area
     return contours_descending_size
-
-
-# Determine the maximum border needed to enclose all pieces
-# such that each image
-# has a square aspect ratio, the piece is centered in the image,
-# and the pieces are all scaled relative to each other
-def get_max_border(max_border, min_x, min_y, max_x, max_y, c_x, c_y):
-    if (c_y - min_y) > max_border: max_border = c_y - min_y
-    if (max_y - c_y) > max_border: max_border = max_y - c_y
-    if (c_x - min_x) > max_border: max_border = c_x - min_x
-    if (max_x - c_x) > max_border: max_border = max_x - c_x
-    return max_border
 
 
 # Rotate the unsegmented image with respect to its center
