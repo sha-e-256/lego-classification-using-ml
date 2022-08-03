@@ -12,9 +12,8 @@ import typing
 
 """
 A module that is used to perform the demonstration. This module takes an image using the Raspberry Pi camera,
-segments that image, and then labels the initial unsegmented image with the predicted label, the probability of that
-label, and then draws bounding boxes. 
-
+segments that image, and then labels each piece in the initial unsegmented image with the predicted name, and
+the probability of that prediction. The bounding boxes are also drawn around each piece.  
 Attributes
 ----------
 WHITE: list
@@ -64,7 +63,7 @@ def get_prediction_and_probability(img: np.ndarray,
 
 
 # Draws text at the center of each box; used to display the prediction & probabilities
-def draw_text_with_outline(colour, img, center, text):
+def draw_text_with_outline(img, center, text):
     outline_thickness = 13
     text_thickness = 3
     font = cv.FONT_HERSHEY_SIMPLEX
@@ -174,14 +173,12 @@ def draw_on_unsegmented_img(unsegmented_img_w_border, right_border, top_border, 
         # Draw contour of bounding box on unsegmented image in a random colour
         cv.drawContours(unsegmented_img_w_border, [translated_segmented_img_b_box], 0, colour, 8)
 
-        draw_text_with_outline(colour=colour,
-                               img=unsegmented_img_w_border,
+        draw_text_with_outline(img=unsegmented_img_w_border,
                                text=segmented_img_label,
                                center=(translated_segmented_img_b_box_c_x,
                                        translated_segmented_img_b_box_c_y - 30))
 
-        draw_text_with_outline(colour=colour,
-                               img=unsegmented_img_w_border,
+        draw_text_with_outline(img=unsegmented_img_w_border,
                                text=segmented_img_probability,
                                center=(translated_segmented_img_b_box_c_x,
                                        translated_segmented_img_b_box_c_y + 30))
@@ -260,6 +257,7 @@ def main():
     #         break
     #
     # cap.release()
+
     # cv.destroyAllWindows()
     #
     # cap = cv.VideoCapture(0)
