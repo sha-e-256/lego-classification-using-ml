@@ -39,7 +39,7 @@ WHITE = [255, 255, 255]
 
 
 def get_prediction_and_probability(img: np.ndarray,
-                                   model) -> tuple[np.str, np.float]:
+                                   model) -> tuple[str, float]:
     """
         Returns the name of the predicted piece and the probability of that prediction
 
@@ -52,7 +52,7 @@ def get_prediction_and_probability(img: np.ndarray,
 
         Returns
         -------
-        predicted_name, probability: tuple[np.str, np.float]
+        predicted_name, probability: tuple[str, float]
             The predicted name of the piece and the probability of that prediction, respectively.
         """
     probability_array = model.predict(img)[0]  # 1 x 8 array of the predictions
@@ -61,6 +61,7 @@ def get_prediction_and_probability(img: np.ndarray,
                    "Brick Arch 1 x 8 x 2", "Plate 1 x 6", "Plate 1 x 4", "Wedge Plate 4 x 2"])
     predicted_name = piece_names[probability_array == max_probability][0]
     return predicted_name, max_probability
+
 
 # Draws text at the center of each box; used to display the prediction & probabilities
 def draw_text_with_outline(colour, img, center, text):
@@ -90,6 +91,7 @@ def draw_text_with_outline(colour, img, center, text):
                thickness=text_thickness,
                lineType=cv.LINE_AA)
 
+
 def clear_dir(dst_dir):
     for file_name in os.listdir(dst_dir):
         os.remove(os.path.join(dst_dir, file_name))
@@ -105,11 +107,22 @@ def update_dictionary(results, i, prediction, probability, segmented_img_b_box, 
     results[i]['c_y'] = segmented_img_b_box_c_y
     return results
 
+
 def normalize_img(img_dir):
     segmented_img = cv.imread(img_dir, cv.IMREAD_GRAYSCALE)  # NumPy array of the segmented image
-    segmented_img = np.array(segmented_img).reshape(-1, 256, 256, 1)
-    segmented_img = segmented_img / 255.0
-    return segmented_img
+    display_fullscreen_img(segmented_img)
+    segmented_img_tensor = np.array(segmented_img).reshape(-1, 256, 256, 1)
+    segmented_img_normalized = segmented_img_tensor / 255.0
+    return segmented_img_normalized
+
+
+def display_fullscreen_img(img):
+    img_w_border, _, _= add_border(img=img, lcd_width=1920, lcd_height=1080, scale_factor=1)
+    cv.namedWindow('img', cv.WND_PROP_FULLSCREEN)
+    cv.setWindowProperty('img', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
+    cv.imshow('img', img_w_border)
+    cv.waitKey()
+
 
 def add_border(img, lcd_width, lcd_height, scale_factor):
     img_height = int(img.shape[0])
@@ -181,11 +194,11 @@ def run_test(src_dir, dst_dir, model):
     # of the four corners of the bounding box of each piece,
     # and the center coordinates of each piece
 
-    unsegmented_img_src_dir = os.path.join(src_dir, '21.png')
+    unsegmented_img_src_dir = os.path.join(src_dir, '0.png')
     unsegmented_img = cv.imread(unsegmented_img_src_dir)  # The image of the scattered Lego pieces
                                                           # taken by the camera
-    # Generate segmented images
-    # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented_img
+    # Generate segmented images and place them in the destination directory
+    # and return a list of the contours enclosing a piece (the 'true contours') in the unsegmented image
     true_contours = sc.get_segmented_imgs(unsegmented_img, max_border, dst_dir, is_test_flag=True)
 
     segmented_img_names = sorted(os.listdir(dst_dir))
@@ -194,6 +207,8 @@ def run_test(src_dir, dst_dir, model):
 
         segmented_img_src_dir = os.path.join(dst_dir, file_name)  # Path of the segmented image
         segmented_img = normalize_img(img_dir=segmented_img_src_dir)
+
+
         prediction, probability = get_prediction_and_probability(segmented_img, model)
 
         # Once a prediction has been determined, update the dictionary
@@ -205,7 +220,10 @@ def run_test(src_dir, dst_dir, model):
                                     segmented_img_b_box,
                                     segmented_img_b_box_center)
 
-        unsegmented_img_w_border, border, scale_factor = add_border(img=unsegmented_img, lcd_width=1366, lcd_height=768, scale_factor=2)
+        unsegmented_img_w_border, border, scale_factor = add_border(img=unsegmented_img,
+                                                                    lcd_width=1366,
+                                                                    lcd_height=768,
+                                                                    scale_factor=2)
         top_border, bottom_border, left_border, right_border = border
 
     unsegmented_img_w_border = draw_on_unsegmented_img(unsegmented_img_w_border=unsegmented_img_w_border,
@@ -214,32 +232,48 @@ def run_test(src_dir, dst_dir, model):
                                                        results=results)
     img_height = int(unsegmented_img_w_border.shape[0])
     img_width = int(unsegmented_img_w_border.shape[1])
-    # Resize image so it fits on the monitor
+
+    # Resize image so that it fits on the monitor
     down_points = (img_width // scale_factor, img_height // scale_factor)
     unsegmented_img_downsized = cv.resize(src=unsegmented_img_w_border,
                                           dsize=down_points,
                                           interpolation=cv.INTER_LINEAR)
 
     # Display image with bounding box information
-    window_name = "unsegmented img with bounding boxes"
-    cv.imshow(window_name, unsegmented_img_downsized)
-    cv.waitKey()
-    cv.destroyAllWindows()
+    display_fullscreen_img(unsegmented_img_downsized)
 
 
 def main():
 
-    dst_dir = rf'E:\lego-classification-using-ml\segmented-testing-images'
-    src_dir = rf'E:\lego-classification-using-ml\testing-images'
-    # subprocess.run(["D:\lego-classification-using-ml/livefeed.sh"])
-    model = tf.keras.models.load_model(rf'E:\lego-classification-using-ml\neural_net')
-    #subprocess.run(["D:\lego-classification-using-ml/take_pic.sh"])
-    start_time = time.time()
+    dst_dir = rf'D:\lego-classification-using-ml\segmented-testing-images'
+    src_dir = rf'D:\lego-classification-using-ml\testing-images'
+    model = tf.keras.models.load_model(rf'D:\lego-classification-using-ml\neural_net')
 
+    # while True:
+    #     cap = cv.VideoCapture(0)
+    #     cap.set(3, 2048)  # width = 2048
+    #     cap.set(4, 2048)  # height = 2048
+    #     ret, frame = cap.read()
+    #     frame = cv.rotate(frame, cv.ROTATE_90_COUNTERCLOCKWISE)
+    #     display_fullscreen_img(frame)
+    #     if cv.waitKey(1) & 0xFF == ord('y'):
+    #         break
+    #
+    # cap.release()
+    # cv.destroyAllWindows()
+    #
+    # cap = cv.VideoCapture(0)
+    # cap.set(3, 2048)  # width=2048
+    # cap.set(4, 2048)  # height=2048
+    #
+    # if cap.isOpened():
+    #     _, frame = cap.read()
+    #     frame = cv.rotate(frame, cv.ROTATE_90_COUNTERCLOCKWISE)
+    #     cap.release()  # releasing camera immediately after capturing picture
+    #     if _ and frame is not None:
+    #         cv.imwrite(rf'D:\lego-classification-using-ml\testing-images/testing-images/0.png', frame)
     run_test(src_dir, dst_dir, model)
 
-    end_time = time.time()
-    #print(f'total time:{end_time - start_time}')
 
 if __name__ == '__main__':
     main()
