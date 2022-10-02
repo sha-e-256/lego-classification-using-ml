@@ -4,7 +4,7 @@ learning (ML) to perform object detection and object classification to
 identify the element ID of each Lego piece in a pile of scattered Lego pieces.
 
 ## File Tree
-
+```
 lego-classification-using-ml
 ├── cad-training-images
 │   ├── 2639
@@ -178,3 +178,4 @@ lego-classification-using-ml
 ├── testing-images
 │   └── 0.png
 └── test.py
+```
