@@ -1,9 +1,6 @@
 import os
-import argparse
-import random
 import cv2 as cv  # openCV
 import numpy as np
-from tqdm import tqdm
 import smart_crop as sc  # Self-made library used to crop images
 
 # The objective of this program is to pre-process images that will be used to
@@ -12,31 +9,6 @@ import smart_crop as sc  # Self-made library used to crop images
 # cropped to have a square (1:1) aspect ratio.
 
 def main():
-
-    # Allow user to supply the paths of directories using the command line
-    # For ex., enter the following into the terminal:
-    # python dataset.py 'D:\lego-classification-using-ml\training-images'
-    # 'D:\lego-classification-using-ml\square-training-images'
-    # Use 'CTRL-C' to exit a script running in terminal
-    def get_src_dst_dir():
-        parser = argparse.ArgumentParser(
-            description='''Pre-processes images that will be used to generate
-            a training dataset''')
-
-        parser.add_argument(
-            'src_dir', metavar='src_dir', type=str,
-            help='''Enter top-most source directory containing images which
-            will be pre-processed''')
-        parser.add_argument(
-            'dst_dir', metavar='dst_dir', type=str,
-            help='''Enter top-most destination directory where pre-processed
-            images will be saved''')
-
-        args = parser.parse_args()
-        src_dir = args.src_dir
-        dst_dir = args.dst_dir
-
-        return src_dir, dst_dir
 
     def get_class_names(src_dir):
         try:
@@ -51,15 +23,12 @@ def main():
     # Traverse through training image directories and pre-process images
     def process_images():
         flag = True
-        #src_dir, dst_dir = get_src_dst_dir()  # Paths of source and destination
         src_dir = rf'D:\lego-classification-using-ml\real-training-images'
         dst_dir = rf'D:\lego-classification-using-ml\square-real-training-images'
         # directories, respectively
         class_names = get_class_names(src_dir)
-        # print(f'\nsrc_dir: {src_dir} \ndst_dir: {dst_dir}')  # Debug statement
-        # print(f'\nclass names:{class_names}')  # Debug statement
+
         for class_name in class_names:
-            print(class_name)
             class_name_dir = rf'{src_dir}\{class_name}'  # Path of each
             # subdirectory
             # r' ignores escape characters in string
@@ -67,7 +36,6 @@ def main():
             img_names = sorted(os.listdir(class_name_dir))  # Names of images in
             # subdirectory
             for img_name in img_names:
-                print(img_name)
                 img_src_dir = rf'{class_name_dir}\{img_name}'  # Path of image
                 img = cv.imread(img_src_dir)  # np array of image
                 # destination directory does not exist...
@@ -79,7 +47,8 @@ def main():
                         pass    # Do not generate a subdirectory if it already
                         # exists
                     img_dst_dir = rf'{dst_dir}\{class_name}\{img_name.split(".")[0]}'
-                    sc.smart_crop(img, img_dst_dir, isTest=False)
+                    max_border = 399 + 10  # Value determined experimentally
+                    sc.smart_crop(img, max_border, img_dst_dir, is_test_flag=False)
 
     process_images()
 
