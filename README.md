@@ -188,7 +188,7 @@ undergone any pre-processing.
 <img src="https://user-images.githubusercontent.com/105937174/193477813-be073db6-12e7-40e5-8c87-c84c2daeffcf.png" width="250" height="250" />
 </kbd>
 
-
+&nbsp;
 The cad-training-images folder contains images of Lego pieces that were 
 generated in LDCad using the script rotation_script.lua.
 
@@ -197,7 +197,7 @@ generated in LDCad using the script rotation_script.lua.
 <img src="https://user-images.githubusercontent.com/105937174/193478246-757e0264-56c4-4767-b12b-d21c1f2454ce.png" width="250" height="250" border="1" />
 </kbd>
 
-
+&nbsp;
 The real-training-images folder contains images of Lego pieces that were taken
 using the Raspberry Pi camera. These images could not be uploaded to this repo
 because their file size is too large.
@@ -313,4 +313,7 @@ This folder contains the weights of the machine learning model that was
 developped using TensorFlow. The model weights are imported into test.py to
 create predictions.
 
+## important notes
 
+The code used to generate the machine learning model is available in a
+Google Colab notebook. 
