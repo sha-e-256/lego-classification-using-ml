@@ -12,13 +12,13 @@ import typing
 """
 A module that is used to perform the demonstration. This module takes an image using the Raspberry Pi camera,
 segments that image, and then labels each piece in the initial unsegmented image with the predicted name, and
-the probability of that prediction. The bounding boxes are also drawn around each piece.  
+the probability of that prediction. The bounding boxes are also drawn around each piece.
 Attributes
 ----------
 WHITE: list
     White colour in GBR colour model.
 BLACK: list
-    Black colour in GBR colour model. 
+    Black colour in GBR colour model.
 """
 
 
