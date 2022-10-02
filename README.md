@@ -179,3 +179,13 @@ lego-classification-using-ml
 │   └── 0.png
 └── test.py
 ```
+
+## cad-training-images & real-training-images
+
+The cad-training-images folder contains images of Lego pieces that
+were generated in LDCadu using rotation_script.lua. These images have 
+not undergone any pre-processing.
+
+#### cad-training-images
+![image](https://user-images.githubusercontent.com/105937174/193476928-f2c464f6-7c1c-406d-904c-d4597c732caa.png)
+
