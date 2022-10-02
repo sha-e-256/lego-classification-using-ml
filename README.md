@@ -189,6 +189,7 @@ undergone any pre-processing.
 </kbd>
 
 &nbsp;
+
 The cad-training-images folder contains images of Lego pieces that were 
 generated in LDCad using the script rotation_script.lua.
 
@@ -198,6 +199,7 @@ generated in LDCad using the script rotation_script.lua.
 </kbd>
 
 &nbsp;
+
 The real-training-images folder contains images of Lego pieces that were taken
 using the Raspberry Pi camera. These images could not be uploaded to this repo
 because their file size is too large.
