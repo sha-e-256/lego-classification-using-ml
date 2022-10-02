@@ -178,7 +178,7 @@ lego-classification-using-ml
 └── test.py
 ```
 
-## cad-training-images & real-training-images
+## training images: cad-training-images & real-training-images
 
 These images were used to generate the training dataset. These images have not
 undergone any pre-processing.
@@ -205,7 +205,9 @@ Each one of these images contains two Lego pieces; this was done to speed up
 the process of taking images. The script dataset.py was used to segment these
 images into individual Lego pieces. 
 
-## dataset.py
+# scripts: dataset.py & rotation.lua
+
+### dataset.py
 
 The main purpose of this Python script is to navigate file directories. This script is
 used to pre-process all the training images found in the cad-training-images
@@ -213,31 +215,37 @@ and real-training-images folders. Pre-processing is performed by calling the
 get_segmented_imgs function available in the smart crop library on each
 training image. 
 
-## element_ids_for_demonstration.txt
-
-This text file contains the names of all the Lego pieces that are used in the
-demonstration.
-
-## neural_net
-
-This folder contains the weights of the machine learning model that was
-developped using TensorFlow. The model weights are imported into test.py to
-create predictions.
-
-## testing-images
-
-This folder contains the image that is taken by the Raspberry Pi camera during
-the demonstration.
-
-## segmented-testing-images
-
-This folder contains segmented images of the testing image; in other words, if
-the testing image contains eight Lego pieces, then segmented-testing-images
-will contain eight images such that each image only contains one Lego piece. 
-
 ## rotation_script.lua
 
 The main purpose of this Lua script is to automate the process of creating 3D 
 training images of Lego pieces in LDCad. This script is used to create an 
 animation of a Lego piece being rotated 90 degrees on two axes. Each frame of 
 this animation is then saved to cad-training-images. 
+
+## testing images: testing-images & segmented-testing-images
+
+### testing-images
+
+This folder contains the image that is taken by the Raspberry Pi camera during
+the demonstration.
+
+### segmented-testing-images
+
+This folder contains segmented images of the testing image; in other words, if
+the testing image contains eight Lego pieces, then segmented-testing-images
+will contain eight images such that each image only contains one Lego piece. 
+
+## misc
+
+### element_ids_for_demonstration.txt
+
+This text file contains the names of all the Lego pieces that are used in the
+demonstration.
+
+### neural_net
+
+This folder contains the weights of the machine learning model that was
+developped using TensorFlow. The model weights are imported into test.py to
+create predictions.
+
+
