@@ -182,10 +182,21 @@ lego-classification-using-ml
 
 ## cad-training-images & real-training-images
 
-The cad-training-images folder contains images of Lego pieces that
-were generated in LDCadu using rotation_script.lua. These images have 
-not undergone any pre-processing.
+These images were used to generate the training dataset. These images 
+have not undergone any pre-processing.
 
 #### cad-training-images
-![image](https://user-images.githubusercontent.com/105937174/193476928-f2c464f6-7c1c-406d-904c-d4597c732caa.png)
+<img src="https://user-images.githubusercontent.com/105937174/193477813-be073db6-12e7-40e5-8c87-c84c2daeffcf.png" width="500" height="500" />
 
+The cad-training-images folder contains images of Lego pieces that
+were generated in LDCad using the script rotation_script.lua.
+
+#### real-training-images
+
+<img src="https://user-images.githubusercontent.com/105937174/193478246-757e0264-56c4-4767-b12b-d21c1f2454ce.png" width="500" height="500" />
+
+The real-training-images folder contains images of Lego pieces that were
+taken using the Raspberry Pi camera. These images could not be uploaded to this 
+repo because their file size is too large. Each one of these images contains 
+two Lego pieces; this was done to speed up the process of taking images. The
+script dataset.py was used to segment these images into individual Lego pieces. 
