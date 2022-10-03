@@ -63,7 +63,7 @@ can be used to pre-process images. Pre-processing an image involves segmenting
 the image such that each image contains only one Lego piece, removing the 
 background of the image, centering the Lego piece in the image, rotating the 
 Lego piece in the image such that it is perpendicular to the borders of the 
-images, and scaling the Lego piece in the image with respect to the largest 
+image, and scaling the Lego piece in the image with respect to the largest 
 available Lego piece.
 
 ## square training images: square-cad-training-images & square-real-training-images
