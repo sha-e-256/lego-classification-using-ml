@@ -1,12 +1,15 @@
 # lego-classification-using-ml
-A Lego classification system that uses computer vision (CV) and machine
-learning (ML) to perform object detection and object classification to
-identify the element ID of each Lego piece in a pile of scattered Lego pieces.
 
-## training images: cad-training-images & real-training-images
+A Lego classification system that uses computer vision and machine learning 
+to perform object detection and object classification to identify each Lego 
+piece in a pile of scattered Lego pieces.
 
-These images were used to generate the training dataset. These images have not
-undergone any pre-processing.
+## training images: cad-training-images
+## & real-training-images
+
+The images in the 'cad-training-images' and 'real-training-images' folder are
+used to generate the training dataset which is used to train the machine 
+learning model. These images have not undergone any pre-processing.
 
 #### cad-training-images
 <kbd>
@@ -15,8 +18,8 @@ undergone any pre-processing.
 
 &nbsp;
 
-The cad-training-images folder contains images of Lego pieces that were 
-generated in LDCad using the script rotation_script.lua.
+The 'cad-training-images' folder contains images of 3D Lego pieces that were 
+generated in LDCad using the script 'rotation_script.lua'.
 
 #### real-training-images
 <kbd>
@@ -25,52 +28,57 @@ generated in LDCad using the script rotation_script.lua.
 
 &nbsp;
 
-The real-training-images folder contains images of Lego pieces that were taken
-using the Raspberry Pi camera. These images could not be uploaded to this repo
-because their file size is too large.
+The real-training-images folder contains images of real Lego pieces that were 
+taken using the Raspberry Pi camera. These images could not be uploaded to 
+this repo because their file size is too large.
+
 Each one of these images contains two Lego pieces; this was done to speed up 
-the process of taking images. The script dataset.py was used to segment these
-images into individual Lego pieces. 
+the process of taking images. The script 'dataset.py' is used to segment these
+images into images of individual Lego pieces. 
 
 ## scripts: dataset.py & rotation.lua
 
 ### dataset.py
 
-The main purpose of this Python script is to navigate file directories. This script is
-used to pre-process all the training images found in the cad-training-images
-and real-training-images folders. Pre-processing is performed by calling the
-get_segmented_imgs function available in the smart crop library on each
-training image. 
+The main purpose of the Python script 'dataset.py' is to navigate file 
+directories. This script is used to pre-process all the training images found
+in the cad-training-images and real-training-images folders. 
+
+Pre-processing is performed by calling the get_segmented_imgs function 
+available in the smart crop library on each training image. 
 
 ### rotation_script.lua
 
-The main purpose of this Lua script is to automate the process of creating 3D 
-training images of Lego pieces in LDCad. This script is used to create an 
-animation of a Lego piece being rotated 90 degrees on two axes. Each frame of 
-this animation is then saved to cad-training-images. 
+The main purpose of the Lua script 'rotation_script.lua' is to automate the 
+process of creating 3D training images of Lego pieces in LDCad. This script is
+used to create an animation of a Lego piece being rotated 90 degrees on two 
+axes. Each frame of this animation is then saved to the 'cad-training-images'
+folder. 
 
 ## libraries
 
 ### smart_crop.py
 
-The main purpose of this library is to provide functions that can be used to
-pre-process images. Pre-processing images involves segmenting the image such 
-that each image only contained one Lego piece, then removing the background of
-the image, centering the Lego piece in the image, rotating the Lego piece in
-the image such that it was perpendicular with the borders of the images, and
-scaling the Lego piece in the image with respect to the largest Lego piece.
+The main purpose of the library 'smart_crop.py' is to provide functions that
+can be used to pre-process images. Pre-processing an image involves segmenting
+the image such that each image contains only one Lego piece, removing the 
+background of the image, centering the Lego piece in the image, rotating the 
+Lego piece in the image such that it is perpendicular to the borders of the 
+images, and scaling the Lego piece in the image with respect to the largest 
+available Lego piece.
 
 ## square training images: square-cad-training-images & square-real-training-images
 
-These folders contain the training images after undergoing pre-processing.
+The 'square-cad-training-images' and 'square-real-training-images' folders contain 
+the training images after undergoing pre-processing.
+
 Pre-processing is performed using dataset.py and the functions available in the
 smart crop library.
-The Lego piece is centered in each image; in addition, the Lego piece has been
-scaled to the size of the largest Lego piece.
 
 ### square-cad-training-images
 
-This folder contains the cad-training-images after undergoing pre-processing.
+The 'square-cad-training-images' folder contains the cad-training-images after
+undergoing pre-processing.
 
 <kbd>
 <img src="https://user-images.githubusercontent.com/105937174/193480931-ecb74b3b-9c4d-4859-81ec-01c9895b6fca.png" width="250" height="250" />
@@ -79,11 +87,12 @@ This folder contains the cad-training-images after undergoing pre-processing.
 
 ### square-real-training-images
 
-This folder contains the real-training-images after undergoing pre-processing.
-As mentioned earlier, each real training image contained two Lego pieces;
-therefore, after pre-processing, that image was segmented such that each image
-only contained one Lego piece. As a result, two segmented images were
-generated.
+The 'square-real-training-images' folder contains the real-training-images 
+after undergoing pre-processing.
+
+As mentioned earlier, each real training image contains two Lego pieces;
+therefore, after pre-processing, that image is segmented such that each image 
+contains only one Lego piece. As a result, two images are generated.
 
 <kbd>
 <img src="https://user-images.githubusercontent.com/105937174/193481027-16bb8b67-b16b-4311-be06-5ac05d4301e9.png" width="250" height="250" />
@@ -97,27 +106,27 @@ generated.
 
 ### testing-images
 
-This folder contains the image that is taken by the Raspberry Pi camera during
+The 'testing-images' folder contains the image that is taken by the Raspberry Pi camera during
 the demonstration.
 
 ### segmented-testing-images
 
-This folder contains segmented images of the testing image; in other words, if
-the testing image contains eight Lego pieces, then segmented-testing-images
-will contain eight images such that each image only contains one Lego piece. 
-
+The 'segmented-testing-images' folder contains the segmented images of the 
+testing image; in other words, if the testing image in 'testing-images' 
+contains eight Lego pieces, then 'segmented-testing-images' will contain eight
+images with each image containing only one Lego piece. 
 
 ## demonstration
 
 ### test.py
 
-The main purpose of this Python module is to perform the demonstration. This
-module displays a livefeed of the Raspberry Pi camera, and then takes an image 
-after receiving input from the user. This image is then segmented such that 
-each segmented image only contains one Lego piece. The machine learning model
-then uses each segmented image as an input and generates a prediction of what
-piece is in the segmented image. This prediction is then displayed as a
-percentage on the original image that was taken.
+The main purpose of the Python module 'test.py' is to perform the
+demonstration. This module displays a livefeed of the Raspberry Pi camera, and
+then takes an image after receiving input from the user. This image is then 
+segmented such that each segmented image contains only one Lego piece. The 
+machine learning model then takes each segmented image as an input and 
+generates a prediction of what piece is in the segmented image. This prediction
+is then displayed as a percentage on the original image that was taken.
 
 <kbd>
 <img src="https://user-images.githubusercontent.com/105937174/193481490-6adf8b75-83f6-42f2-bf3f-d802b533c928.png" width="250" height="250" />
@@ -131,14 +140,14 @@ percentage on the original image that was taken.
 
 ### element_ids_for_demonstration.txt
 
-This text file contains the names of all the Lego pieces that are used in the
-demonstration.
+The 'element_ids_for_demonstration.txt' file contains the names of all the 
+Lego pieces that are used in the demonstration.
 
 ### neural_net
 
-This folder contains the weights of the machine learning model that was
-developped using TensorFlow. The model weights are imported into test.py to
-create predictions.
+This 'neural_net' folder contains the weights of the machine learning model
+that is used to create predictions. Predictions are generated in the 'test.py'
+module.
 
 ## file tree
 ```
