@@ -51,7 +51,7 @@ this animation is then saved to cad-training-images.
 
 ## libraries
 
-# smart_crop.py
+### smart_crop.py
 
 The main purpose of this library is to provide functions that can be used to
 pre-process images. Pre-processing images involves segmenting the image such 
