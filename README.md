@@ -94,7 +94,7 @@ therefore, after pre-processing, that image is segmented such that each
 segmented image contains only one Lego piece. As a result, two images are generated.
 
 <kbd>
-<img src="https://user-images.githubusercontent.com/105937174/193481027-16bb8b67-b16b-4311-be06-5ac05d4301e9.png" width="250" height="250" />
+<img src="https://user-images.githubusercontent.com/105937174/193499993-85a57118-b8af-4d1b-ab13-3fac30ba1c86.png" width="250" height="250" />
 </kbd>
 
 <kbd>
