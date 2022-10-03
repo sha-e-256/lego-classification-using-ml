@@ -4,8 +4,7 @@ A Lego classification system that uses computer vision and machine learning
 to perform object detection and object classification to identify each Lego 
 piece in a pile of scattered Lego pieces.
 
-## training images: cad-training-images
-## & real-training-images
+## training images: cad-training-images & real-training-images
 
 The images in the 'cad-training-images' and 'real-training-images' folder are
 used to generate the training dataset which is used to train the machine 
