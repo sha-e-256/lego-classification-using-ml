@@ -41,7 +41,7 @@ images into images of individual Lego pieces.
 
 The main purpose of the Python script 'dataset.py' is to navigate file 
 directories. This script is used to pre-process all the training images found
-in the cad-training-images and real-training-images folders. 
+in the 'cad-training-images' and 'real-training-images' folders. 
 
 Pre-processing is performed by calling the get_segmented_imgs function 
 available in the smart crop library on each training image. 
@@ -71,13 +71,13 @@ available Lego piece.
 The 'square-cad-training-images' and 'square-real-training-images' folders contain 
 the training images after undergoing pre-processing.
 
-Pre-processing is performed using dataset.py and the functions available in the
-smart crop library.
+Pre-processing is performed using the script 'dataset.py' and the functions 
+available in the smart crop library.
 
 ### square-cad-training-images
 
-The 'square-cad-training-images' folder contains the cad-training-images after
-undergoing pre-processing.
+The 'square-cad-training-images' folder contains the images in the 
+'cad-training-images' folder after undergoing pre-processing.
 
 <kbd>
 <img src="https://user-images.githubusercontent.com/105937174/193480931-ecb74b3b-9c4d-4859-81ec-01c9895b6fca.png" width="250" height="250" />
@@ -86,12 +86,12 @@ undergoing pre-processing.
 
 ### square-real-training-images
 
-The 'square-real-training-images' folder contains the real-training-images 
-after undergoing pre-processing.
+The 'square-real-training-images' folder contains the images in the 
+'real-training-images' folder after undergoing pre-processing.
 
 As mentioned earlier, each real training image contains two Lego pieces;
-therefore, after pre-processing, that image is segmented such that each image 
-contains only one Lego piece. As a result, two images are generated.
+therefore, after pre-processing, that image is segmented such that each
+segmented image contains only one Lego piece. As a result, two images are generated.
 
 <kbd>
 <img src="https://user-images.githubusercontent.com/105937174/193481027-16bb8b67-b16b-4311-be06-5ac05d4301e9.png" width="250" height="250" />
